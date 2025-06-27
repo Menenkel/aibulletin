@@ -1,14 +1,6 @@
 [
   {
     "urls": [
-      "https://fews.net/sites/default/files/2025-06/FEWS_NET_Global_Food_Security_Update_06232025.pdf"
-    ],
-    "region": "Sub-Saharan Africa",
-    "custom_prompt": "You're a drought analyst. Analyze the provided URLs and create a comprehensive drought-focused summary for the selected region. Include up to two paragraphs for:\n\n1. Current Drought Conditions: Assess the severity and extent of drought in the region\n2. Water Resources: Status of surface water, groundwater, and reservoir levels\n3. Impact on food security and Agriculture: Effects on crops and livestock\n4. Food prices and economic impact\n\nUse headlines based on these four categories and separate the sections with breaks. \nEnsure that the text describes current conditions without phrases such as \"the report highlights\". Simply summarize conditions from the URLs or PDFs provided.",
-    "timestamp": "2025-06-27T00:03:56.578264"
-  },
-  {
-    "urls": [
       "https://fews.net/sites/default/files/2025-06/FEWS_NET_Global_Food_Security_Update_06232025.pdf",
       "https://www.ncei.noaa.gov/access/monitoring/monthly-report/global-drought/202503",
       "https://www.cropmonitor.org/global-crop-monitor",
@@ -110,5 +102,20 @@
     "region": "Middle East & North Africa",
     "custom_prompt": "You're a drought analyst. Analyze the provided URLs and create a comprehensive drought-focused summary for the selected region. Include up to two paragraphs for:\n\n1. Current Drought Conditions: Assess the severity and extent of drought in the region\n2. Water Resources: Status of surface water, groundwater, and reservoir levels\n3. Impact on food security and Agriculture: Effects on crops and livestock\n4. Food prices and economic impact\n\nStrictly use all headlines based on these four categories and separate the sections with breaks. \nEnsure that the text describes current conditions without phrases such as \"the report highlights\". Simply summarize conditions from the URLs or PDFs provided.",
     "timestamp": "2025-06-27T00:19:24.150051"
+  },
+  {
+    "urls": [
+      "https://fews.net/sites/default/files/2025-06/FEWS_NET_Global_Food_Security_Update_06232025.pdf",
+      "https://www.ncei.noaa.gov/access/monitoring/monthly-report/global-drought/202503",
+      "https://www.cropmonitor.org/global-crop-monitor",
+      "https://www.worldbank.org/en/topic/agriculture/brief/food-security-update",
+      "https://www.fao.org/worldfoodsituation/foodpricesindex/en/",
+      "https://www.fao.org/worldfoodsituation/csdb/en",
+      "https://www.acaps.org/en/",
+      "https://joint-research-centre.ec.europa.eu/european-and-global-drought-observatories/current-drought-situation-europe_en"
+    ],
+    "region": "Europe & Central Asia",
+    "custom_prompt": "You're a drought analyst. Analyze the provided URLs and create a comprehensive drought-focused summary for the selected region. Include up to two paragraphs for:\n\n1. Current Drought Conditions: Assess the severity and extent of drought in the region\n2. Water Resources: Status of surface water, groundwater, and reservoir levels\n3. Impact on food security and Agriculture: Effects on crops and livestock\n4. Food prices and economic impact\n\nStrictly use all headlines based on these four categories and separate the sections with breaks. \nEnsure that the text describes current conditions without phrases such as \"the report highlights\". Simply summarize conditions from the URLs or PDFs provided.",
+    "timestamp": "2025-06-27T01:00:22.564568"
   }
 ]

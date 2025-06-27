@@ -265,7 +265,7 @@ async def set_api_key(request: ApiKeyRequest):
 
 @app.get("/api-key/status")
 async def get_api_key_status():
-    return {"status": "set" if api_key else "not_set"}
+    return {"has_api_key": bool(api_key)}
 
 @app.get("/regions")
 async def get_regions():
