@@ -15,24 +15,19 @@
   to = "/index.html"
   status = 200
 
-[[functions]]
-  function = "crawl-and-summarize-simple"
+[functions."crawl-and-summarize-simple"]
   timeout = 30
 
-[[functions]]
-  function = "api-key-simple"
+[functions."api-key-simple"]
   timeout = 10
 
-[[functions]]
-  function = "health-simple"
+[functions."health-simple"]
   timeout = 5
 
-[[functions]]
-  function = "regions-simple"
+[functions."regions-simple"]
   timeout = 5
 
-[[functions]]
-  function = "saved-urls-simple"
+[functions."saved-urls-simple"]
   timeout = 5
 
 [[plugins]]
