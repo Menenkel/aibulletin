@@ -16,16 +16,11 @@ exports.handler = async (event, context) => {
 
   if (event.httpMethod === 'GET') {
     const regions = [
-      "Global Overview",
-      "Sub-Saharan Africa",
-      "North Africa",
-      "Middle East",
+      "East Asia and Pacific",
+      "Europe and Central Asia",
+      "Latin America/Caribbean",
       "South Asia",
-      "Southeast Asia",
-      "Latin America",
-      "Caribbean",
-      "Europe",
-      "North America"
+      "Sub-Saharan Africa"
     ];
 
     return {

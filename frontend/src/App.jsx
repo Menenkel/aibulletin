@@ -96,7 +96,17 @@ Focus on actionable insights and clear, concise reporting suitable for policymak
     // Load regions
     fetch(getApiEndpoint('regions'))
       .then((res) => res.json())
-      .then((data) => setRegions(data))
+      .then((data) => {
+        // Ensure correct order regardless of backend
+        const ordered = [
+          "East Asia and Pacific",
+          "Europe and Central Asia",
+          "Latin America/Caribbean",
+          "South Asia",
+          "Sub-Saharan Africa"
+        ];
+        setRegions(ordered.filter(r => data.includes(r)));
+      })
       .catch((err) => console.error("Error loading regions:", err));
 
     // Check API key status
