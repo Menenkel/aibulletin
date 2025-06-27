@@ -1,26 +1,60 @@
-# AI Web Content Summarizer
+# Experimental AI Drought Bulletins
 
-A full-stack web application that crawls websites and generates AI-powered summaries using OpenAI's GPT-4o-mini model.
+A full-stack web application that crawls multiple sources to generate comprehensive drought and food security analysis using AI. The application combines web scraping, PDF processing, and OpenAI GPT-4o-mini to create structured drought bulletins.
 
 ## Features
 
-- **Web Crawling**: Uses Crawlee with Playwright to handle modern, JavaScript-heavy websites
-- **AI Summarization**: Integrates with OpenAI API for intelligent content processing
-- **Custom Prompts**: Users can specify their own summarization instructions
-- **Clean UI**: Modern React frontend with Tailwind CSS
-- **Real-time Processing**: Live status updates during crawling
+- **Multi-source Crawling**: Crawls web pages and PDF documents from various sources
+- **AI-Powered Analysis**: Uses OpenAI GPT-4o-mini to generate structured drought analysis
+- **PDF Support**: Automatically detects and processes PDF URLs using PyPDF2
+- **Recursive Crawling**: Optional link following with configurable depth
+- **Persistent Storage**: Saves API keys, URLs, and custom prompts
+- **World Bank Regions**: Supports region-specific analysis using World Bank classifications
+- **Modern UI**: React frontend with Ant Design components and responsive design
+- **Progress Tracking**: Visual progress indicators during crawling and analysis
 
 ## Tech Stack
 
-- **Backend**: Python, FastAPI, Crawlee, OpenAI API
-- **Frontend**: React, Vite, Tailwind CSS
-- **Crawling**: Playwright (via Crawlee)
-- **AI**: OpenAI GPT-4o-mini
+### Backend
+- **FastAPI**: Modern Python web framework
+- **OpenAI GPT-4o-mini**: AI analysis and summarization
+- **PyPDF2**: PDF text extraction
+- **BeautifulSoup**: Web scraping and HTML parsing
+- **Requests**: HTTP client for web crawling
+- **Uvicorn**: ASGI server
+
+### Frontend
+- **React**: Frontend framework
+- **Vite**: Build tool and dev server
+- **Ant Design**: UI component library
+- **Tailwind CSS**: Utility-first CSS framework
+- **Framer Motion**: Animation library
+
+## Project Structure
+
+```
+Drought_Bulletin_webcrawler/
+├── backend/
+│   ├── main.py              # FastAPI application
+│   ├── requirements.txt     # Python dependencies
+│   ├── storage.py          # Data persistence utilities
+│   ├── world_bank_regions.py # Region loading utilities
+│   └── data/               # Data storage directory
+├── frontend/
+│   ├── src/
+│   │   ├── App.jsx         # Main React component
+│   │   ├── main.jsx        # React entry point
+│   │   └── components/     # UI components
+│   ├── package.json        # Node.js dependencies
+│   └── vite.config.js      # Vite configuration
+├── data/
+│   └── world_bank_regions.csv # World Bank region mappings
+└── README.md
+```
 
 ## Setup Instructions
 
 ### Prerequisites
-
 - Python 3.8+
 - Node.js 16+
 - OpenAI API key
@@ -43,9 +77,10 @@ A full-stack web application that crawls websites and generates AI-powered summa
    pip install -r requirements.txt
    ```
 
-4. Create a `.env` file in the backend directory:
+4. Create API key file:
    ```bash
-   echo "OPENAI_API_KEY=your_actual_openai_api_key_here" > .env
+   mkdir -p data
+   echo '{"api_key": "your-openai-api-key-here"}' > data/api_key.json
    ```
 
 5. Start the backend server:
@@ -76,67 +111,90 @@ The frontend will run on `http://localhost:5173`
 
 ## Usage
 
-1. Open your browser and go to `http://localhost:5173`
-2. Enter URLs (one per line) in the first textarea
-3. Customize the summarization prompt in the second textarea
-4. Click "Start Crawl & Summarize"
-5. Wait for the results to appear
+1. **Set API Key**: Enter your OpenAI API key in the settings
+2. **Select Region**: Choose a World Bank region for analysis
+3. **Add URLs**: Enter URLs to crawl (supports both web pages and PDFs)
+4. **Customize Prompt**: Modify the analysis prompt if needed
+5. **Configure Crawling**: Set link following and depth options
+6. **Generate Analysis**: Click "Analyze" to start the process
 
 ## API Endpoints
 
-- `GET /`: Health check endpoint
-- `POST /crawl-and-summarize`: Main endpoint for crawling and summarizing
+- `GET /`: Root endpoint
+- `GET /regions`: Get available World Bank regions
+- `GET /api-key/status`: Check API key status
+- `POST /api-key`: Set API key
+- `GET /saved-urls`: Get saved URLs and settings
+- `POST /saved-urls`: Save URLs and settings
+- `POST /crawl-and-summarize`: Main analysis endpoint
 
-### Request Format
-```json
-{
-  "urls": ["https://example.com", "https://example2.com"],
-  "custom_prompt": "Provide a 5-bullet point summary"
-}
-```
+## Analysis Structure
 
-### Response Format
-```json
-[
-  {
-    "url": "https://example.com",
-    "summary": "Generated summary text..."
-  }
-]
-```
+The AI generates structured analysis with the following sections:
+- **Current Drought Conditions**: Overview of drought severity and affected areas
+- **Food Security and Production**: Impact on agriculture and food availability
+- **Water Resources**: Water availability and management issues
+- **Food Prices**: Price trends and market impacts
 
-## Configuration
+## Supported Sources
 
-- **Max Requests Per Crawl**: Set to 15 by default (configurable in `main.py`)
-- **Text Length Limit**: 8000 characters to avoid token limits
-- **OpenAI Model**: GPT-4o-mini
-- **Max Tokens**: 500 for summaries
+The application can crawl various sources including:
+- FEWS NET reports and bulletins
+- FAO food security updates
+- World Bank agriculture briefs
+- NOAA drought monitoring data
+- Crop monitoring reports
+- And many other drought and food security related sources
 
-## Error Handling
+## PDF Processing
 
-The application includes comprehensive error handling for:
-- Invalid URLs
-- Network errors
-- OpenAI API errors
-- Crawling failures
+The application automatically detects PDF URLs and:
+- Downloads PDF files
+- Extracts text content using PyPDF2
+- Processes the text through the AI analysis pipeline
+- Handles errors gracefully for corrupted or inaccessible PDFs
+
+## Security Features
+
+- API keys are stored locally and not committed to version control
+- GitHub push protection prevents accidental exposure of secrets
+- Comprehensive `.gitignore` prevents sensitive files from being tracked
 
 ## Development
 
-To run both frontend and backend in development mode:
+### Adding New Features
+1. Backend changes: Modify `backend/main.py`
+2. Frontend changes: Modify `frontend/src/App.jsx`
+3. Test changes locally before committing
 
-1. Start the backend (from backend directory):
-   ```bash
-   python main.py
-   ```
+### Environment Variables
+- No environment variables required for basic setup
+- API keys are stored in `backend/data/api_key.json`
 
-2. Start the frontend (from frontend directory):
-   ```bash
-   npm run dev
-   ```
+## Contributing
 
-## Notes
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Test thoroughly
+5. Submit a pull request
 
-- Make sure to replace `your_actual_openai_api_key_here` with your real OpenAI API key
-- The crawler is configured to run headless by default
-- CORS is enabled for localhost:5173 (frontend)
-- All dependencies are specified in their respective requirements files 
+## License
+
+This project is for experimental and research purposes. Please ensure compliance with the terms of service for all data sources and APIs used.
+
+## Support
+
+For issues and questions:
+1. Check the GitHub issues page
+2. Review the setup instructions
+3. Ensure all dependencies are properly installed
+4. Verify API key configuration
+
+## Acknowledgments
+
+- OpenAI for providing the GPT-4o-mini API
+- FEWS NET for drought and food security data
+- World Bank for regional classifications
+- FAO for food security information
+- NOAA for drought monitoring data 
