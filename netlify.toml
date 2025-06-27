@@ -19,7 +19,6 @@
 [functions]
   directory = "netlify/functions"
   node_bundler = "esbuild"
-  timeout = 30
 
 [[plugins]]
   package = "@netlify/plugin-functions-install-core"
