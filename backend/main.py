@@ -387,14 +387,14 @@ async def crawl_and_summarize(request: CrawlRequest):
         summary = response.choices[0].message.content
         
         return {
-            "summary": summary,
+            "analysis": summary,
             "urls_analyzed": total_urls_crawled,
             "followed_links": request.follow_links,
             "pdf_support": PDF_SUPPORT
         }
         
     except Exception as e:
-        return {"summary": f"Error generating analysis: {str(e)}"}
+        return {"analysis": f"Error generating analysis: {str(e)}"}
 
 @app.get("/health")
 async def health_check():

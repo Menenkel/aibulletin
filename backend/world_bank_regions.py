@@ -124,12 +124,11 @@ IMPORTANT: You MUST use these exact section headers with colons. Do not add any 
 
 def get_all_regions():
     """Get list of all World Bank regions."""
-    return ["Global Overview"] + list(WORLD_BANK_REGIONS.keys())
-
-REGIONS = [
-    "East Asia and Pacific",
-    "Europe and Central Asia",
-    "Latin America/Caribbean",
-    "South Asia",
-    "Sub-Saharan Africa"
-] 
+    return [
+        "Global Overview",
+        "East Asia & Pacific", 
+        "Europe & Central Asia",
+        "Latin America & Caribbean",
+        "South Asia",
+        "Sub-Saharan Africa"
+    ] 
