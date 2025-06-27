@@ -14,6 +14,8 @@ from openai import OpenAI
 from urllib.parse import urljoin, urlparse
 from world_bank_regions import create_regional_prompt, get_all_regions, get_region_for_country
 from storage import Storage
+from requests.adapters import HTTPAdapter
+from urllib3.util.retry import Retry
 
 # PDF handling imports
 try:
@@ -79,14 +81,23 @@ def is_pdf_url(url: str) -> bool:
     return parsed.path.lower().endswith('.pdf') or 'pdf' in parsed.path.lower()
 
 def extract_text_from_pdf(url: str) -> str:
-    """Download and extract text from a PDF file."""
+    """Download and extract text from a PDF file with robust retry logic."""
     if not PDF_SUPPORT:
         return f"Error: PDF support not available. Please install PyPDF2: pip install PyPDF2"
     
     try:
-        # Download the PDF
+        # Robust download with retries
+        session = requests.Session()
+        retries = Retry(
+            total=3,
+            backoff_factor=1,
+            status_forcelist=[429, 500, 502, 503, 504],
+            allowed_methods=["GET"]
+        )
+        session.mount('https://', HTTPAdapter(max_retries=retries))
+        session.mount('http://', HTTPAdapter(max_retries=retries))
         print(f"Downloading PDF: {url}")
-        response = requests.get(url, timeout=30, stream=True)
+        response = session.get(url, timeout=30, stream=True)
         response.raise_for_status()
         
         # Check if it's actually a PDF
@@ -105,35 +116,30 @@ def extract_text_from_pdf(url: str) -> str:
         try:
             with open(temp_file_path, 'rb') as pdf_file:
                 pdf_reader = PyPDF2.PdfReader(pdf_file)
-                
                 for page_num, page in enumerate(pdf_reader.pages):
                     try:
                         page_text = page.extract_text()
-                        if page_text.strip():
+                        if page_text and page_text.strip():
                             text_content.append(f"Page {page_num + 1}:\n{page_text}")
                     except Exception as e:
                         print(f"Error extracting text from page {page_num + 1}: {e}")
                         continue
-                
-                # Clean up temporary file
                 os.unlink(temp_file_path)
-                
                 if text_content:
                     return "\n\n".join(text_content)
                 else:
                     return "No text content could be extracted from the PDF."
-                    
         except Exception as e:
-            # Clean up temporary file on error
             try:
                 os.unlink(temp_file_path)
             except:
                 pass
             return f"Error reading PDF: {str(e)}"
-            
     except requests.exceptions.RequestException as e:
+        print(f"Error downloading PDF: {str(e)}")
         return f"Error downloading PDF: {str(e)}"
     except Exception as e:
+        print(f"Error processing PDF: {str(e)}")
         return f"Error processing PDF: {str(e)}"
 
 async def crawl_url(url: str, browser, depth: int = 1, max_depth: int = 2):
@@ -389,6 +395,15 @@ async def crawl_and_summarize(request: CrawlRequest):
         
     except Exception as e:
         return {"summary": f"Error generating analysis: {str(e)}"}
+
+@app.get("/health")
+async def health_check():
+    """Health check endpoint that returns system status."""
+    return {
+        "status": "healthy",
+        "pdf_support": PDF_SUPPORT,
+        "api_key_configured": api_key is not None
+    }
 
 @app.get("/")
 async def root():

@@ -1,18 +1,18 @@
 {
-  "name": "netlify-functions",
+  "name": "drought-bulletin-functions",
   "version": "1.0.0",
-  "description": "Netlify Functions for Drought Bulletin App",
+  "description": "Netlify Functions for Drought Bulletin API",
   "main": "index.js",
   "dependencies": {
+    "openai": "^4.28.0",
     "axios": "^1.6.0",
-    "openai": "^4.20.0",
-    "puppeteer": "^21.0.0"
+    "cheerio": "^1.0.0-rc.12"
   },
   "devDependencies": {},
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "keywords": [],
+  "keywords": ["netlify", "functions", "drought", "api"],
   "author": "",
   "license": "ISC"
 }

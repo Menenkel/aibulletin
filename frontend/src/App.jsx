@@ -45,7 +45,18 @@ const { Option } = Select;
 const { Step } = Steps;
 
 // API configuration
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/.netlify/functions';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
+
+// Check if we're in production (Netlify)
+const isProduction = window.location.hostname !== 'localhost';
+
+// Use different endpoints for production vs development
+const getApiEndpoint = (endpoint) => {
+  if (isProduction) {
+    return `/.netlify/functions/${endpoint}`;
+  }
+  return `${API_BASE_URL}/${endpoint}`;
+};
 
 // Updated with dark mode toggle and background animation
 function App() {
@@ -83,22 +94,19 @@ Focus on actionable insights and clear, concise reporting suitable for policymak
 
   useEffect(() => {
     // Load regions
-    fetch(`${API_BASE_URL}/regions`)
+    fetch(getApiEndpoint('regions'))
       .then((res) => res.json())
-      .then((data) => setRegions(Array.isArray(data) ? data : []))
-      .catch((err) => {
-        console.error("Error loading regions:", err);
-        setRegions([]); // ensure it's an array on error
-      });
+      .then((data) => setRegions(data))
+      .catch((err) => console.error("Error loading regions:", err));
 
     // Check API key status
-    fetch(`${API_BASE_URL}/api-key`)
+    fetch(getApiEndpoint('api-key/status'))
       .then((res) => res.json())
       .then((data) => setApiKeyStatus(data.has_api_key ? "set" : "not_set"))
       .catch((err) => console.error("Error checking API key status:", err));
 
-    // Load saved URLs and custom prompt
-    fetch(`${API_BASE_URL}/saved-urls`)
+    // Load saved URLs
+    fetch(getApiEndpoint('saved-urls'))
       .then((res) => res.json())
       .then((data) => {
         setUrls(data.urls.join("\n"));
@@ -108,18 +116,21 @@ Focus on actionable insights and clear, concise reporting suitable for policymak
       })
       .catch((err) => console.error("Error loading saved URLs:", err));
 
-    // Check PDF support status
-    fetch(`${API_BASE_URL}/health`)
+    // Check health status
+    fetch(getApiEndpoint('health'))
       .then((res) => res.json())
-      .then((data) => setPdfSupport(data.pdf_support || false))
-      .catch((err) => console.error("Error checking PDF support:", err));
+      .then((data) => {
+        setPdfSupport(data.pdf_support);
+        setApiKeyConfigured(data.api_key_configured);
+      })
+      .catch((err) => console.error("Error checking health:", err));
   }, []);
 
   const handleApiKeySubmit = async () => {
     if (!apiKey.trim()) return;
     
     try {
-      const response = await fetch(`${API_BASE_URL}/api-key`, {
+      const response = await fetch(getApiEndpoint('api-key'), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ api_key: apiKey }),
@@ -221,7 +232,7 @@ Focus on actionable insights and clear, concise reporting suitable for policymak
       // Start crawling simulation
       simulateCrawling();
       
-      const response = await fetch(`${API_BASE_URL}/crawl-and-summarize`, {
+      const response = await fetch(getApiEndpoint('crawl-and-summarize'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

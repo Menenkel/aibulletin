@@ -1,6 +1,6 @@
 [build]
-  command = "cd frontend && npm install && npm run build && cd ../netlify/functions && npm install"
   publish = "frontend/dist"
+  command = "cd frontend && npm install && npm run build && cd ../netlify/functions && npm install"
 
 [build.environment]
   NODE_VERSION = "18"
@@ -15,9 +15,25 @@
   to = "/index.html"
   status = 200
 
-[functions]
-  directory = "netlify/functions"
-  node_bundler = "esbuild"
+[[functions]]
+  function = "crawl-and-summarize-simple"
+  timeout = 30
+
+[[functions]]
+  function = "api-key-simple"
+  timeout = 10
+
+[[functions]]
+  function = "health-simple"
+  timeout = 5
+
+[[functions]]
+  function = "regions-simple"
+  timeout = 5
+
+[[functions]]
+  function = "saved-urls-simple"
+  timeout = 5
 
 [[plugins]]
   package = "@netlify/plugin-functions-install-core"
