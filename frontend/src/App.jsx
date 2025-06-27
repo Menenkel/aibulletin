@@ -62,6 +62,7 @@ const getApiEndpoint = (endpoint) => {
 function App() {
   const [apiKey, setApiKey] = useState("");
   const [apiKeyStatus, setApiKeyStatus] = useState("not_set");
+  const [apiKeyConfigured, setApiKeyConfigured] = useState(false);
   const [selectedRegion, setSelectedRegion] = useState("");
   const [urls, setUrls] = useState("");
   const [customPrompt, setCustomPrompt] = useState(`Please analyze the provided URLs and create a comprehensive AI drought analysis for the selected region. Include:
@@ -119,8 +120,10 @@ Focus on actionable insights and clear, concise reporting suitable for policymak
     fetch(getApiEndpoint('saved-urls'))
       .then((res) => res.json())
       .then((data) => {
-        setUrls(data.urls.join("\n"));
-        if (data.custom_prompt !== undefined) {
+        if (data && data.urls && Array.isArray(data.urls)) {
+          setUrls(data.urls.join("\n"));
+        }
+        if (data && data.custom_prompt !== undefined) {
           setCustomPrompt(data.custom_prompt);
         }
       })

@@ -215,23 +215,29 @@ async def crawl_and_summarize(request: CrawlRequest):
 async def get_regions():
     """Get available regions."""
     return [
-        "Global Overview",
-        "Sub-Saharan Africa",
-        "North Africa",
-        "Middle East",
+        "East Asia and Pacific",
+        "Europe and Central Asia",
+        "Latin America/Caribbean",
         "South Asia",
-        "Southeast Asia",
-        "Latin America",
-        "Caribbean",
-        "Europe",
-        "North America"
+        "Sub-Saharan Africa"
     ]
 
 # Saved URLs endpoint
 @app.get("/saved-urls")
 async def get_saved_urls():
     """Get recently saved URLs."""
-    return storage.get_recent_urls()
+    recent_urls = storage.get_recent_urls(1)  # Get only the most recent entry
+    if recent_urls:
+        latest = recent_urls[-1]
+        return {
+            "urls": latest.get("urls", []),
+            "custom_prompt": latest.get("custom_prompt", "")
+        }
+    else:
+        return {
+            "urls": [],
+            "custom_prompt": ""
+        }
 
 if __name__ == "__main__":
     import uvicorn
