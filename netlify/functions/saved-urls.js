@@ -1,3 +1,10 @@
+// Simple in-memory storage (will reset on function cold start)
+let storedData = {
+  urls: [],
+  custom_prompt: '',
+  region: 'Global Overview'
+};
+
 exports.handler = async (event, context) => {
   const headers = {
     'Access-Control-Allow-Origin': '*',
@@ -10,25 +17,45 @@ exports.handler = async (event, context) => {
   }
 
   if (event.httpMethod === 'GET') {
-    // Return empty data for now - you can implement persistent storage later
+    console.log('GET request - returning stored data:', storedData);
     return {
       statusCode: 200,
       headers,
-      body: JSON.stringify({
-        urls: [],
-        custom_prompt: '',
-        region: 'Global Overview'
-      }),
+      body: JSON.stringify(storedData),
     };
   }
 
   if (event.httpMethod === 'POST') {
-    // Save data - you can implement persistent storage later
-    return {
-      statusCode: 200,
-      headers,
-      body: JSON.stringify({ success: true }),
-    };
+    try {
+      const body = JSON.parse(event.body);
+      console.log('POST request - storing data:', body);
+      
+      // Update stored data
+      if (body.urls) storedData.urls = body.urls;
+      if (body.custom_prompt !== undefined) storedData.custom_prompt = body.custom_prompt;
+      if (body.region) storedData.region = body.region;
+      
+      console.log('Updated stored data:', storedData);
+      
+      return {
+        statusCode: 200,
+        headers,
+        body: JSON.stringify({ 
+          success: true, 
+          stored: storedData 
+        }),
+      };
+    } catch (error) {
+      console.error('Error storing data:', error);
+      return {
+        statusCode: 400,
+        headers,
+        body: JSON.stringify({ 
+          error: 'Invalid JSON data',
+          details: error.message 
+        }),
+      };
+    }
   }
 
   return {

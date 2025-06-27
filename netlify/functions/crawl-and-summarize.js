@@ -8,6 +8,13 @@ const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
 
+// Simple in-memory storage for saved data
+let savedData = {
+  urls: [],
+  custom_prompt: '',
+  region: 'Global Overview'
+};
+
 // PDF text extraction function
 async function extractTextFromPDF(pdfUrl) {
   try {
@@ -122,7 +129,7 @@ exports.handler = async (event, context) => {
     const body = JSON.parse(event.body);
     const { urls, custom_prompt, region, follow_links = false, max_depth = 1 } = body;
 
-    console.log('Request body:', { urls, follow_links, max_depth });
+    console.log('Request body:', { urls, follow_links, max_depth, custom_prompt, region });
 
     if (!urls || !Array.isArray(urls) || urls.length === 0) {
       return {
@@ -140,6 +147,14 @@ exports.handler = async (event, context) => {
         body: JSON.stringify({ error: 'OpenAI API key not configured' }),
       };
     }
+
+    // Save the data for future reference
+    savedData = {
+      urls: urls,
+      custom_prompt: custom_prompt || '',
+      region: region || 'Global Overview'
+    };
+    console.log('Saved data for future reference:', savedData);
 
     console.log('Starting URL crawling...');
     
@@ -203,6 +218,7 @@ Each section should be detailed and based on the provided content. If informatio
         pdf_support: hasPDFs,
         urls_processed: limitedUrls.length,
         total_characters: combinedText.length,
+        saved_data: savedData, // Include saved data in response
       }),
     };
 
