@@ -20,5 +20,29 @@
   directory = "netlify/functions"
   node_bundler = "esbuild"
 
+[[functions]]
+  function = "crawl-and-summarize"
+  timeout = 30
+
+[[functions]]
+  function = "api-key"
+  timeout = 10
+
+[[functions]]
+  function = "regions"
+  timeout = 10
+
+[[functions]]
+  function = "saved-urls"
+  timeout = 10
+
+[[functions]]
+  function = "saved-prompt"
+  timeout = 10
+
+[[functions]]
+  function = "health"
+  timeout = 10
+
 [[plugins]]
   package = "@netlify/plugin-functions-install-core"
