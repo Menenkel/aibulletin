@@ -19,7 +19,8 @@ import {
   Row,
   Col,
   Steps,
-  Timeline
+  Timeline,
+  message
 } from "antd";
 import {
   GlobalOutlined,
@@ -42,6 +43,9 @@ const { Title, Text, Paragraph } = Typography;
 const { TextArea } = Input;
 const { Option } = Select;
 const { Step } = Steps;
+
+// API configuration
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/.netlify/functions';
 
 // Updated with dark mode toggle and background animation
 function App() {
@@ -79,7 +83,7 @@ Focus on actionable insights and clear, concise reporting suitable for policymak
 
   useEffect(() => {
     // Load regions
-    fetch("http://localhost:8000/regions")
+    fetch(`${API_BASE_URL}/regions`)
       .then((res) => res.json())
       .then((data) => setRegions(Array.isArray(data) ? data : []))
       .catch((err) => {
@@ -88,13 +92,13 @@ Focus on actionable insights and clear, concise reporting suitable for policymak
       });
 
     // Check API key status
-    fetch("http://localhost:8000/api-key/status")
+    fetch(`${API_BASE_URL}/api-key/status`)
       .then((res) => res.json())
       .then((data) => setApiKeyStatus(data.status))
       .catch((err) => console.error("Error checking API key status:", err));
 
     // Load saved URLs and custom prompt
-    fetch("http://localhost:8000/saved-urls")
+    fetch(`${API_BASE_URL}/saved-urls`)
       .then((res) => res.json())
       .then((data) => {
         setUrls(data.urls.join("\n"));
@@ -105,7 +109,7 @@ Focus on actionable insights and clear, concise reporting suitable for policymak
       .catch((err) => console.error("Error loading saved URLs:", err));
 
     // Check PDF support status
-    fetch("http://localhost:8000/")
+    fetch(`${API_BASE_URL}/`)
       .then((res) => res.json())
       .then((data) => setPdfSupport(data.pdf_support || false))
       .catch((err) => console.error("Error checking PDF support:", err));
@@ -115,7 +119,7 @@ Focus on actionable insights and clear, concise reporting suitable for policymak
     if (!apiKey.trim()) return;
     
     try {
-      const response = await fetch("http://localhost:8000/api-key", {
+      const response = await fetch(`${API_BASE_URL}/api-key`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ api_key: apiKey }),
@@ -217,7 +221,7 @@ Focus on actionable insights and clear, concise reporting suitable for policymak
       // Start crawling simulation
       simulateCrawling();
       
-      const response = await fetch('http://localhost:8000/crawl-and-summarize', {
+      const response = await fetch(`${API_BASE_URL}/crawl-and-summarize`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

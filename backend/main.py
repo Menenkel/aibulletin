@@ -31,7 +31,19 @@ app = FastAPI()
 # Enable CORS for the frontend
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://localhost:5174"],
+    allow_origins=[
+        "http://localhost:5173", 
+        "http://localhost:5174",
+        "http://localhost:3000",
+        "https://localhost:5173",
+        "https://localhost:5174",
+        # Add your production domains here
+        "https://your-app.netlify.app",
+        "https://your-app.vercel.app",
+        "https://your-app.render.com",
+        # Allow all origins for development (remove in production)
+        "*"
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -206,11 +218,20 @@ async def crawl_url(url: str, browser, depth: int = 1, max_depth: int = 2):
 async def startup_event():
     """Load saved API key on startup."""
     global api_key, client
-    saved_api_key = storage.load_api_key()
-    if saved_api_key:
-        api_key = saved_api_key
+    
+    # First try to load from environment variable (for production)
+    env_api_key = os.getenv("OPENAI_API_KEY")
+    if env_api_key:
+        api_key = env_api_key
         client = OpenAI(api_key=api_key)
-        print("Loaded saved API key from storage")
+        print("Loaded API key from environment variable")
+    else:
+        # Fall back to saved API key from storage
+        saved_api_key = storage.load_api_key()
+        if saved_api_key:
+            api_key = saved_api_key
+            client = OpenAI(api_key=api_key)
+            print("Loaded saved API key from storage")
     
     # Print PDF support status
     if PDF_SUPPORT:
