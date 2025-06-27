@@ -272,9 +272,9 @@ Focus on actionable insights and clear, concise reporting suitable for policymak
         setResults(prev => [...prev, {
           region: selectedRegion,
           urls: urlList,
-          summary: data.summary,
+          summary: data.analysis,
           status: 'success',
-          urlsAnalyzed: data.urls_analyzed || urlList.length,
+          urlsAnalyzed: data.urls_processed?.length || urlList.length,
           followedLinks: data.followed_links || false,
           timestamp: new Date().toISOString()
         }]);
@@ -368,13 +368,31 @@ Focus on actionable insights and clear, concise reporting suitable for policymak
   const formatAnalysisOutput = (summary) => {
     if (!summary) return '';
     
-    // Split by the specific section headers requested
-    const sections = summary.split(/(?=Current Drought Conditions:|Food Security and Production:|Water Resources:|Food Prices:)/);
+    // Split by the specific section headers requested (handle both markdown and plain text)
+    const sections = summary.split(/(?=#### \d+\. |### |Current Drought Conditions:|Food Security and Production:|Water Resources:|Food Prices:)/);
     
     return sections.map((section, index) => {
       if (section.trim() === '') return null;
       
-      // Check if it's one of our specific headers
+      // Handle markdown headers (#### 1. Current Drought Conditions)
+      const markdownMatch = section.match(/^#### \d+\. (.+?)$/m);
+      if (markdownMatch) {
+        const headerText = markdownMatch[1];
+        const content = section.substring(section.indexOf('\n') + 1).trim();
+        
+        return (
+          <div key={index} style={{ marginBottom: 24 }}>
+            <Title level={4} style={{ marginBottom: 12, color: '#1890ff' }}>
+              {headerText}
+            </Title>
+            <Paragraph style={{ marginBottom: 0, paddingLeft: 16 }}>
+              {content}
+            </Paragraph>
+          </div>
+        );
+      }
+      
+      // Handle plain text headers
       if (section.startsWith('Current Drought Conditions:') || 
           section.startsWith('Food Security and Production:') || 
           section.startsWith('Water Resources:') || 
@@ -385,6 +403,24 @@ Focus on actionable insights and clear, concise reporting suitable for policymak
         return (
           <div key={index} style={{ marginBottom: 24 }}>
             <Title level={4} style={{ marginBottom: 12, color: '#1890ff' }}>
+              {headerText}
+            </Title>
+            <Paragraph style={{ marginBottom: 0, paddingLeft: 16 }}>
+              {content}
+            </Paragraph>
+          </div>
+        );
+      }
+      
+      // Handle other markdown headers (### Drought Bulletin for...)
+      const otherMarkdownMatch = section.match(/^### (.+?)$/m);
+      if (otherMarkdownMatch) {
+        const headerText = otherMarkdownMatch[1];
+        const content = section.substring(section.indexOf('\n') + 1).trim();
+        
+        return (
+          <div key={index} style={{ marginBottom: 24 }}>
+            <Title level={3} style={{ marginBottom: 12, color: '#1890ff' }}>
               {headerText}
             </Title>
             <Paragraph style={{ marginBottom: 0, paddingLeft: 16 }}>
