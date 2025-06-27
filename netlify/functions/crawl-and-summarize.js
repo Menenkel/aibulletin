@@ -1,7 +1,5 @@
 const axios = require('axios');
 const OpenAI = require('openai');
-const cheerio = require('cheerio');
-const pdf = require('pdf-parse');
 
 // Initialize OpenAI client
 const openai = new OpenAI({
@@ -15,85 +13,33 @@ let savedData = {
   region: 'Global Overview'
 };
 
-// PDF text extraction function
-async function extractTextFromPDF(pdfUrl) {
+// Simplified text extraction function
+async function extractTextFromUrl(url) {
   try {
-    console.log(`Processing PDF: ${pdfUrl}`);
-    const response = await axios.get(pdfUrl, {
-      responseType: 'arraybuffer',
-      timeout: 15000, // Reduced timeout for Netlify
-    });
-    
-    const data = await pdf(response.data);
-    return data.text;
-  } catch (error) {
-    console.error(`Error processing PDF ${pdfUrl}:`, error.message);
-    return `Error processing PDF: ${error.message}`;
-  }
-}
-
-// Web crawling function
-async function crawlUrl(url, depth = 1, maxDepth = 1, visited = new Set()) {
-  if (depth > maxDepth || visited.has(url)) {
-    return '';
-  }
-  
-  visited.add(url);
-  
-  try {
-    console.log(`Crawling: ${url} (depth: ${depth})`);
+    console.log(`Processing URL: ${url}`);
     
     // Check if it's a PDF URL
     if (url.toLowerCase().endsWith('.pdf')) {
-      console.log(`Detected PDF URL: ${url}`);
-      return await extractTextFromPDF(url);
+      console.log(`PDF detected: ${url}`);
+      return `PDF content from ${url} - [PDF processing would be implemented here]`;
     }
     
     const response = await axios.get(url, {
-      timeout: 8000, // Reduced timeout for Netlify
+      timeout: 5000, // Very short timeout for Netlify
       headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
       }
     });
     
-    const $ = cheerio.load(response.data);
+    // Simple text extraction - just get the text content
+    const text = response.data.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
     
-    // Remove script and style elements
-    $('script, style, nav, footer, header').remove();
+    // Limit text length
+    return text.length > 2000 ? text.substring(0, 2000) + '...' : text;
     
-    let text = $('body').text();
-    
-    // Clean up text and limit length for Netlify
-    text = text.replace(/\s+/g, ' ').trim();
-    if (text.length > 5000) {
-      text = text.substring(0, 5000) + '... [Content truncated for processing]';
-    }
-    
-    // Only follow links if explicitly requested and not at max depth
-    if (depth < maxDepth && depth === 1) {
-      const links = $('a[href]').map((i, el) => $(el).attr('href')).get();
-      const baseUrl = new URL(url);
-      
-      // Limit to 2 links to avoid timeout
-      for (const link of links.slice(0, 2)) {
-        try {
-          const absoluteUrl = new URL(link, baseUrl).href;
-          if (absoluteUrl.startsWith('http') && !visited.has(absoluteUrl)) {
-            const linkText = await crawlUrl(absoluteUrl, depth + 1, maxDepth, visited);
-            if (linkText) {
-              text += '\n\n' + linkText;
-            }
-          }
-        } catch (error) {
-          console.error(`Error following link ${link}:`, error.message);
-        }
-      }
-    }
-    
-    return text;
   } catch (error) {
-    console.error(`Error crawling ${url}:`, error.message);
-    return `Error crawling ${url}: ${error.message}`;
+    console.error(`Error processing ${url}:`, error.message);
+    return `Error processing ${url}: ${error.message}`;
   }
 }
 
@@ -116,8 +62,7 @@ exports.handler = async (event, context) => {
   }
 
   try {
-    console.log('Function started with method:', event.httpMethod);
-    console.log('Event body:', event.body);
+    console.log('Function started');
     
     if (event.httpMethod !== 'POST') {
       return {
@@ -136,9 +81,9 @@ exports.handler = async (event, context) => {
     }
 
     const body = JSON.parse(event.body);
-    const { urls, custom_prompt, region, follow_links = false, max_depth = 1 } = body;
+    const { urls, custom_prompt, region } = body;
 
-    console.log('Request body parsed:', { urls, follow_links, max_depth, custom_prompt, region });
+    console.log('Request received:', { urls: urls?.length, custom_prompt: !!custom_prompt, region });
 
     if (!urls || !Array.isArray(urls) || urls.length === 0) {
       return {
@@ -163,46 +108,45 @@ exports.handler = async (event, context) => {
       custom_prompt: custom_prompt || '',
       region: region || 'Global Overview'
     };
-    console.log('Saved data for future reference:', savedData);
 
-    console.log('Starting URL crawling...');
+    console.log('Starting URL processing...');
     
-    // Limit to 2 URLs to avoid timeout
-    const limitedUrls = urls.slice(0, 2);
+    // Limit to 1 URL to avoid timeout
+    const limitedUrls = urls.slice(0, 1);
     
-    // Crawl all URLs with timeout protection
-    const crawlPromises = limitedUrls.map(url => 
+    // Process URLs with timeout protection
+    const textPromises = limitedUrls.map(url => 
       Promise.race([
-        crawlUrl(url, 1, follow_links ? Math.min(max_depth, 1) : 1, new Set()),
+        extractTextFromUrl(url),
         new Promise((_, reject) => 
-          setTimeout(() => reject(new Error('Crawl timeout')), 6000)
+          setTimeout(() => reject(new Error('Processing timeout')), 4000)
         )
       ]).catch(error => {
-        console.error(`Crawl failed for ${url}:`, error.message);
-        return `Error crawling ${url}: ${error.message}`;
+        console.error(`Processing failed for ${url}:`, error.message);
+        return `Error processing ${url}: ${error.message}`;
       })
     );
     
-    const crawledTexts = await Promise.all(crawlPromises);
-    const combinedText = crawledTexts.join('\n\n---\n\n');
+    const extractedTexts = await Promise.all(textPromises);
+    const combinedText = extractedTexts.join('\n\n---\n\n');
 
-    console.log(`Crawling completed. Total text length: ${combinedText.length}`);
+    console.log(`Processing completed. Text length: ${combinedText.length}`);
 
     // Check if any PDFs were processed
     const hasPDFs = limitedUrls.some(url => url.toLowerCase().endsWith('.pdf'));
 
-    // Generate AI analysis
-    const systemPrompt = `You are an expert analyst specializing in drought conditions, food security, and agricultural monitoring. Analyze the provided content and create a comprehensive AI drought analysis report.
+    // Generate AI analysis with shorter prompt
+    const systemPrompt = `You are an expert analyst specializing in drought conditions and food security. Analyze the provided content and create a brief drought analysis report.
 
-${custom_prompt || 'Create a comprehensive drought analysis covering current conditions, food security, water resources, and food prices.'}
+${custom_prompt || 'Create a brief drought analysis covering current conditions and food security.'}
 
-IMPORTANT: Structure your response with these EXACT section headers:
+Structure your response with these sections:
 - Current Drought Conditions
 - Food Security and Production
 - Water Resources
 - Food Prices
 
-Each section should be detailed and based on the provided content. If information is not available for a section, indicate this clearly.`;
+Keep each section concise.`;
 
     console.log('Starting AI analysis...');
 
@@ -210,9 +154,9 @@ Each section should be detailed and based on the provided content. If informatio
       model: 'gpt-4o-mini',
       messages: [
         { role: 'system', content: systemPrompt },
-        { role: 'user', content: `Please analyze the following content and provide a structured drought analysis:\n\n${combinedText}` }
+        { role: 'user', content: `Analyze this content:\n\n${combinedText}` }
       ],
-      max_tokens: 1000, // Reduced for faster response
+      max_tokens: 800, // Very short for faster response
       temperature: 0.3,
     });
 
@@ -227,20 +171,18 @@ Each section should be detailed and based on the provided content. If informatio
         pdf_support: hasPDFs,
         urls_processed: limitedUrls.length,
         total_characters: combinedText.length,
-        saved_data: savedData, // Include saved data in response
+        saved_data: savedData,
       }),
     };
 
   } catch (error) {
     console.error('Function error:', error);
-    console.error('Error stack:', error.stack);
     return {
       statusCode: 500,
       headers,
       body: JSON.stringify({ 
         error: 'Internal server error',
         details: error.message,
-        stack: error.stack
       }),
     };
   }
