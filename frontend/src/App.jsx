@@ -92,9 +92,9 @@ Focus on actionable insights and clear, concise reporting suitable for policymak
       });
 
     // Check API key status
-    fetch(`${API_BASE_URL}/api-key/status`)
+    fetch(`${API_BASE_URL}/api-key`)
       .then((res) => res.json())
-      .then((data) => setApiKeyStatus(data.status))
+      .then((data) => setApiKeyStatus(data.has_api_key ? "set" : "not_set"))
       .catch((err) => console.error("Error checking API key status:", err));
 
     // Load saved URLs and custom prompt
@@ -109,7 +109,7 @@ Focus on actionable insights and clear, concise reporting suitable for policymak
       .catch((err) => console.error("Error loading saved URLs:", err));
 
     // Check PDF support status
-    fetch(`${API_BASE_URL}/`)
+    fetch(`${API_BASE_URL}/health`)
       .then((res) => res.json())
       .then((data) => setPdfSupport(data.pdf_support || false))
       .catch((err) => console.error("Error checking PDF support:", err));

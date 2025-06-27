@@ -116,7 +116,8 @@ exports.handler = async (event, context) => {
   }
 
   try {
-    console.log('Function started');
+    console.log('Function started with method:', event.httpMethod);
+    console.log('Event body:', event.body);
     
     if (event.httpMethod !== 'POST') {
       return {
@@ -126,10 +127,18 @@ exports.handler = async (event, context) => {
       };
     }
 
+    if (!event.body) {
+      return {
+        statusCode: 400,
+        headers,
+        body: JSON.stringify({ error: 'Request body is required' }),
+      };
+    }
+
     const body = JSON.parse(event.body);
     const { urls, custom_prompt, region, follow_links = false, max_depth = 1 } = body;
 
-    console.log('Request body:', { urls, follow_links, max_depth, custom_prompt, region });
+    console.log('Request body parsed:', { urls, follow_links, max_depth, custom_prompt, region });
 
     if (!urls || !Array.isArray(urls) || urls.length === 0) {
       return {
@@ -158,15 +167,15 @@ exports.handler = async (event, context) => {
 
     console.log('Starting URL crawling...');
     
-    // Limit to 3 URLs to avoid timeout
-    const limitedUrls = urls.slice(0, 3);
+    // Limit to 2 URLs to avoid timeout
+    const limitedUrls = urls.slice(0, 2);
     
     // Crawl all URLs with timeout protection
     const crawlPromises = limitedUrls.map(url => 
       Promise.race([
         crawlUrl(url, 1, follow_links ? Math.min(max_depth, 1) : 1, new Set()),
         new Promise((_, reject) => 
-          setTimeout(() => reject(new Error('Crawl timeout')), 8000)
+          setTimeout(() => reject(new Error('Crawl timeout')), 6000)
         )
       ]).catch(error => {
         console.error(`Crawl failed for ${url}:`, error.message);
@@ -203,7 +212,7 @@ Each section should be detailed and based on the provided content. If informatio
         { role: 'system', content: systemPrompt },
         { role: 'user', content: `Please analyze the following content and provide a structured drought analysis:\n\n${combinedText}` }
       ],
-      max_tokens: 1500, // Reduced for faster response
+      max_tokens: 1000, // Reduced for faster response
       temperature: 0.3,
     });
 
@@ -224,12 +233,14 @@ Each section should be detailed and based on the provided content. If informatio
 
   } catch (error) {
     console.error('Function error:', error);
+    console.error('Error stack:', error.stack);
     return {
       statusCode: 500,
       headers,
       body: JSON.stringify({ 
         error: 'Internal server error',
-        details: error.message 
+        details: error.message,
+        stack: error.stack
       }),
     };
   }
