@@ -31,4 +31,4 @@
   timeout = 5
 
 [[plugins]]
-  package = "@netlify/plugin-functions-install-core"
+package = "@netlify/plugin-functions-install-core"
