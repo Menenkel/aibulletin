@@ -18,5 +18,9 @@
 [[plugins]]
 package = "@netlify/plugin-functions-install-core"
 
+[functions]
+  node_bundler = "esbuild"
+
 [functions."crawl-and-summarize"]
   timeout = 60
+  memory = 1024

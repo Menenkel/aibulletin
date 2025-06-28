@@ -19,234 +19,272 @@ async function processPDF(url) {
   try {
     console.log(`Processing PDF: ${url}`);
     
-    // Download PDF content
+    // Download PDF content with full timeout
     const response = await axios.get(url, {
       responseType: 'arraybuffer',
-      timeout: 10000,
+      timeout: 30000, // Full timeout
       headers: {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
       }
     });
     
     // For Netlify Functions, we'll extract text from PDF using a simple approach
-    // In a full implementation, you'd use pdf-parse or similar
-    console.log(`PDF downloaded: ${response.data.length} bytes`);
+    // In a real implementation, you'd use a PDF parsing library
+    const pdfContent = `PDF content from ${url} - This is a placeholder for actual PDF text extraction.`;
     
-    // Return a placeholder for PDF content
-    return `PDF content extracted from ${url} - [PDF processing completed]`;
-    
+    return {
+      url: url,
+      content: pdfContent,
+      type: 'pdf'
+    };
   } catch (error) {
     console.error(`Error processing PDF ${url}:`, error.message);
-    return `Error processing PDF ${url}: ${error.message}`;
+    return {
+      url: url,
+      content: `Error processing PDF: ${error.message}`,
+      type: 'pdf_error'
+    };
   }
 }
 
-// Web crawling function with Puppeteer
-async function crawlWebsite(url, maxDepth = 2) {
-  try {
-    console.log(`Crawling: ${url} (depth: ${maxDepth})`);
-    
-    // Launch browser
-    const browser = await puppeteer.launch({
-      headless: true,
-      args: ['--no-sandbox', '--disable-setuid-sandbox']
-    });
-    
-    const page = await browser.newPage();
-    await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36');
-    
-    // Navigate to URL
-    await page.goto(url, { waitUntil: 'networkidle', timeout: 10000 });
-    
-    // Extract text content
-    const text = await page.evaluate(() => {
-      // Remove script and style elements
-      const scripts = document.querySelectorAll('script, style, nav, footer, header');
-      scripts.forEach(el => el.remove());
-      
-      // Get text content
-      return document.body.innerText || document.body.textContent || '';
-    });
-    
-    await browser.close();
-    
-    // Clean and limit text
-    const cleanedText = text.replace(/\s+/g, ' ').trim();
-    return cleanedText.length > 3000 ? cleanedText.substring(0, 3000) + '...' : cleanedText;
-    
-  } catch (error) {
-    console.error(`Error crawling ${url}:`, error.message);
-    return `Error crawling ${url}: ${error.message}`;
-  }
-}
-
-// Main processing function
-async function processUrls(urls, custom_prompt, region) {
+// Web crawling function
+async function crawlWebsite(url, maxDepth = 2, followLinks = true) {
+  const visited = new Set();
   const results = [];
   
-  for (const url of urls) {
+  async function crawlPage(currentUrl, depth = 0) {
+    if (depth > maxDepth || visited.has(currentUrl)) return;
+    visited.add(currentUrl);
+    
     try {
-      let content = '';
+      console.log(`Crawling: ${currentUrl} (depth: ${depth})`);
       
-      if (url.toLowerCase().endsWith('.pdf')) {
-        content = await processPDF(url);
-      } else {
-        content = await crawlWebsite(url);
-      }
-      
-      results.push({
-        url,
-        content,
-        type: url.toLowerCase().endsWith('.pdf') ? 'pdf' : 'webpage'
+      const browser = await puppeteer.launch({
+        headless: true,
+        args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage']
       });
       
-    } catch (error) {
-      console.error(`Error processing ${url}:`, error);
+      const page = await browser.newPage();
+      await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36');
+      await page.setDefaultNavigationTimeout(30000);
+      
+      await page.goto(currentUrl, { waitUntil: 'networkidle' });
+      
+      // Extract text content
+      const content = await page.evaluate(() => {
+        return document.body.innerText || document.body.textContent || '';
+      });
+      
+      // Extract links if following links
+      let links = [];
+      if (followLinks && depth < maxDepth) {
+        links = await page.evaluate(() => {
+          return Array.from(document.querySelectorAll('a[href]'))
+            .map(a => a.href)
+            .filter(href => href.startsWith('http') && !href.includes('#'))
+            .slice(0, 10); // Limit to 10 links per page
+        });
+      }
+      
+      await browser.close();
+      
       results.push({
-        url,
-        content: `Error processing ${url}: ${error.message}`,
+        url: currentUrl,
+        content: content.substring(0, 10000), // Limit content size
+        type: 'webpage'
+      });
+      
+      // Recursively crawl links
+      if (followLinks && depth < maxDepth) {
+        for (const link of links.slice(0, 5)) { // Limit to 5 links
+          if (!visited.has(link)) {
+            await crawlPage(link, depth + 1);
+          }
+        }
+      }
+      
+    } catch (error) {
+      console.error(`Error crawling ${currentUrl}:`, error.message);
+      results.push({
+        url: currentUrl,
+        content: `Error crawling: ${error.message}`,
         type: 'error'
       });
     }
   }
   
+  await crawlPage(url);
   return results;
 }
 
-// Main function
+// Main handler function
 exports.handler = async (event, context) => {
-  // Enable CORS
-  const headers = {
-    'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Headers': 'Content-Type',
-    'Access-Control-Allow-Methods': 'POST, OPTIONS',
-  };
-
-  // Handle preflight requests
-  if (event.httpMethod === 'OPTIONS') {
-    return {
-      statusCode: 200,
-      headers,
-      body: '',
-    };
-  }
-
+  console.log('Function started');
+  
   try {
-    console.log('Function started');
-    
+    // Set CORS headers
+    const headers = {
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Headers': 'Content-Type',
+      'Access-Control-Allow-Methods': 'GET, POST, OPTIONS'
+    };
+
+    // Handle preflight requests
+    if (event.httpMethod === 'OPTIONS') {
+      return {
+        statusCode: 200,
+        headers,
+        body: ''
+      };
+    }
+
     if (event.httpMethod !== 'POST') {
       return {
         statusCode: 405,
         headers,
-        body: JSON.stringify({ error: 'Method not allowed' }),
+        body: JSON.stringify({ error: 'Method not allowed' })
       };
     }
 
-    if (!event.body) {
+    console.log('Processing POST request');
+    
+    // Parse request body
+    let requestBody;
+    try {
+      requestBody = JSON.parse(event.body);
+    } catch (error) {
+      console.error('Error parsing request body:', error);
       return {
         statusCode: 400,
         headers,
-        body: JSON.stringify({ error: 'Request body is required' }),
+        body: JSON.stringify({ error: 'Invalid JSON in request body' })
       };
     }
 
-    const body = JSON.parse(event.body);
-    const { urls, custom_prompt, region } = body;
-
-    console.log('Request received:', { urls: urls?.length, custom_prompt: !!custom_prompt, region });
+    const { urls, region, custom_prompt, follow_links = true, max_depth = 2 } = requestBody;
+    
+    console.log('Request parameters:', { urls, region, custom_prompt, follow_links, max_depth });
 
     if (!urls || !Array.isArray(urls) || urls.length === 0) {
       return {
         statusCode: 400,
         headers,
-        body: JSON.stringify({ error: 'URLs array is required' }),
+        body: JSON.stringify({ error: 'URLs array is required and cannot be empty' })
       };
     }
 
     if (!process.env.OPENAI_API_KEY) {
-      console.error('OpenAI API key not configured');
       return {
         statusCode: 500,
         headers,
-        body: JSON.stringify({ error: 'OpenAI API key not configured' }),
+        body: JSON.stringify({ error: 'OpenAI API key not configured' })
       };
     }
 
-    // Save the data for future reference
+    console.log('Starting content collection');
+    
+    // Collect content from all URLs
+    const allContent = [];
+    
+    for (const url of urls) {
+      try {
+        if (url.toLowerCase().endsWith('.pdf')) {
+          const pdfResult = await processPDF(url);
+          allContent.push(pdfResult);
+        } else {
+          const webResults = await crawlWebsite(url, max_depth, follow_links);
+          allContent.push(...webResults);
+        }
+      } catch (error) {
+        console.error(`Error processing URL ${url}:`, error);
+        allContent.push({
+          url: url,
+          content: `Error processing: ${error.message}`,
+          type: 'error'
+        });
+      }
+    }
+
+    console.log(`Collected content from ${allContent.length} sources`);
+
+    // Combine all content
+    const combinedContent = allContent
+      .map(item => `Source: ${item.url}\nContent: ${item.content}\n---\n`)
+      .join('\n');
+
+    console.log('Generating AI analysis');
+    
+    // Generate analysis using OpenAI
+    const prompt = custom_prompt || `Analyze the following content about drought and food security in the ${region} region. Provide a comprehensive summary including:
+1. Key drought conditions and impacts
+2. Food security concerns
+3. Affected areas and populations
+4. Recommendations for monitoring and response
+5. Recent developments and trends
+
+Format the response as a structured drought bulletin.`;
+
+    const completion = await openai.chat.completions.create({
+      model: "gpt-4o-mini",
+      messages: [
+        {
+          role: "system",
+          content: "You are an expert analyst specializing in drought monitoring and food security assessment. Provide clear, structured analysis based on the provided content."
+        },
+        {
+          role: "user",
+          content: `${prompt}\n\nContent to analyze:\n${combinedContent.substring(0, 32000)}` // Limit content size
+        }
+      ],
+      max_tokens: 2000,
+      temperature: 0.3
+    });
+
+    const analysis = completion.choices[0].message.content;
+
+    console.log('Analysis completed successfully');
+
+    // Save data
     savedData = {
       urls: urls,
       custom_prompt: custom_prompt || '',
       region: region || 'Global Overview'
     };
 
-    console.log('Starting URL processing...');
-    
-    // Process URLs (limit to 3 for Netlify timeout)
-    const limitedUrls = urls.slice(0, 3);
-    const processedResults = await processUrls(limitedUrls, custom_prompt, region);
-    
-    // Combine all content
-    const combinedContent = processedResults
-      .map(result => `[${result.type.toUpperCase()}] ${result.url}:\n${result.content}`)
-      .join('\n\n---\n\n');
-
-    console.log(`Processing completed. Content length: ${combinedContent.length}`);
-
-    // Check if any PDFs were processed
-    const hasPDFs = processedResults.some(result => result.type === 'pdf');
-
-    // Generate comprehensive AI analysis
-    const systemPrompt = `You are an expert analyst specializing in drought conditions, food security, and agricultural monitoring. Analyze the provided content and create a comprehensive drought analysis report.
-
-${custom_prompt || 'Create a detailed drought analysis covering current conditions, food security implications, and agricultural impacts.'}
-
-Structure your response with these sections:
-1. **Current Drought Conditions**: Assess the severity and extent of drought conditions
-2. **Food Security and Production**: Analyze impacts on crop production and food availability
-3. **Water Resources**: Evaluate water availability and management challenges
-4. **Food Prices and Markets**: Examine price trends and market implications
-5. **Regional Analysis**: Focus on ${region || 'global'} conditions
-6. **Recommendations**: Provide actionable insights for stakeholders
-
-Use data-driven analysis and maintain a professional tone.`;
-
-    console.log('Starting AI analysis...');
-
-    const completion = await openai.chat.completions.create({
-      model: 'gpt-4o-mini',
-      messages: [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: `Analyze this content:\n\n${combinedContent}` }
-      ],
-      max_tokens: 1500,
-      temperature: 0.3,
-    });
-
-    const summary = completion.choices[0].message.content;
-    console.log('AI analysis completed');
+    const result = {
+      summary: analysis,
+      sources: allContent.map(item => ({
+        url: item.url,
+        type: item.type,
+        content_length: item.content.length
+      })),
+      metadata: {
+        region: region,
+        urls_processed: urls.length,
+        content_sources: allContent.length,
+        timestamp: new Date().toISOString()
+      }
+    };
 
     return {
       statusCode: 200,
       headers,
-      body: JSON.stringify({
-        summary,
-        pdf_support: hasPDFs,
-        urls_processed: processedResults.length,
-        total_characters: combinedContent.length,
-        saved_data: savedData,
-        processed_urls: processedResults.map(r => ({ url: r.url, type: r.type }))
-      }),
+      body: JSON.stringify(result)
     };
 
   } catch (error) {
     console.error('Function error:', error);
     return {
       statusCode: 500,
-      headers,
+      headers: {
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Headers': 'Content-Type',
+        'Access-Control-Allow-Methods': 'GET, POST, OPTIONS'
+      },
       body: JSON.stringify({ 
         error: 'Internal server error',
-        details: error.message,
-      }),
+        details: error.message 
+      })
     };
   }
 };
