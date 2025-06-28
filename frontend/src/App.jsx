@@ -11,7 +11,13 @@ import {
   ExclamationCircleOutlined,
   InfoCircleOutlined,
   BarChartOutlined,
-  SearchOutlined
+  SearchOutlined,
+  DatabaseOutlined,
+  MenuOutlined,
+  LinkOutlined,
+  ClockCircleOutlined,
+  KeyOutlined,
+  StopOutlined
 } from "@ant-design/icons";
 import {
   Layout,
@@ -30,7 +36,13 @@ import {
   Card,
   Input,
   Steps,
-  message
+  message,
+  Tag,
+  Statistic,
+  Timeline,
+  Switch,
+  Progress,
+  Tooltip
 } from "antd";
 
 const { Header, Sider, Content } = Layout;
@@ -118,7 +130,7 @@ function App() {
       .catch((err) => console.error("Error loading regions:", err));
 
     // Check API key status
-    fetch(getApiEndpoint('api-key'))
+    fetch(getApiEndpoint('api-key/status'))
       .then((res) => res.json())
       .then((data) => setApiKeyStatus(data.has_api_key ? "set" : "not_set"))
       .catch((err) => console.error("Error checking API key status:", err));
@@ -659,6 +671,7 @@ function App() {
             onClick={() => setCollapsed(!collapsed)}
             style={{ fontSize: '16px', width: 64, height: 64 }}
           />
+          {/* Tag component displays API connection status - shows "Connected" or "Not Set" based on apiKeyStatus */}
           <Tag color="blue">API: {apiKeyStatus === 'set' ? 'Connected' : 'Not Set'}</Tag>
         </Header>
         
