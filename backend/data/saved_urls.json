@@ -1,24 +1,6 @@
 [
   {
     "urls": [
-      "https://www.cropmonitor.org/global-crop-monitor",
-      "https://www.fao.org/3/ca9509en/ca9509en.pdf"
-    ],
-    "region": "Global Overview",
-    "custom_prompt": "Test",
-    "timestamp": "2025-06-27T19:01:21.007210"
-  },
-  {
-    "urls": [
-      "https://www.cropmonitor.org/global-crop-monitor",
-      "https://www.fao.org/3/ca9509en/ca9509en.pdf"
-    ],
-    "region": "Sub-Saharan Africa",
-    "custom_prompt": "Test",
-    "timestamp": "2025-06-27T19:02:27.790004"
-  },
-  {
-    "urls": [
       "https://www.ncei.noaa.gov/access/monitoring/monthly-report/global-drought/202503 https://www.cropmonitor.org/global-crop-monitor https://www.worldbank.org/en/topic/agriculture/brief/food-security-update https://www.fao.org/worldfoodsituation/foodpricesindex/en/ https://www.fao.org/worldfoodsituation/csdb/en https://www.acaps.org/en/ https://joint-research-centre.ec.europa.eu/european-and-global-drought-observatories/current-drought-situation-europe_en https://reliefweb.int/disasters?list=Drought%20Disasters&advanced-search=%28TY4672%29"
     ],
     "region": "Sub-Saharan Africa",
@@ -109,5 +91,27 @@
     "region": "Global Overview",
     "custom_prompt": "Analyze the provided content for drought conditions, food security, water resources, and food prices in the specified region.",
     "timestamp": "2025-06-27T19:24:42.857447"
+  },
+  {
+    "urls": [
+      "https://www.ncei.noaa.gov/access/monitoring/monthly-report/global-drought/202503 ",
+      "https://fews.net/sites/default/files/2025-06/FEWS_NET_Global_Food_Security_Update_06232025.pdf",
+      "https://www.cropmonitor.org/global-crop-monitor ",
+      "https://www.worldbank.org/en/topic/agriculture/brief/food-security-update https://www.fao.org/worldfoodsituation/foodpricesindex/en/ ",
+      "https://www.fao.org/worldfoodsituation/csdb/en ",
+      "https://joint-research-centre.ec.europa.eu/european-and-global-drought-observatories/current-drought-situation-europe_en ",
+      "https://reliefweb.int/disasters?list=Drought%20Disasters&advanced-search=%28TY4672%29"
+    ],
+    "region": "Global Overview",
+    "custom_prompt": "Analyze the provided content for drought conditions, food security, water resources, and food prices in the specified region.",
+    "timestamp": "2025-06-27T21:36:42.154728"
+  },
+  {
+    "urls": [
+      "https://www.cropmonitor.org/global-crop-monitor "
+    ],
+    "region": "Global Overview",
+    "custom_prompt": "Analyze the provided content for drought conditions, food security, water resources, and food prices in the specified region.",
+    "timestamp": "2025-06-27T21:44:13.303200"
   }
 ]

@@ -13,19 +13,19 @@ let savedData = {
   region: 'Global Overview'
 };
 
-// Ultra-fast content extraction with minimal processing
+// Enhanced content extraction with better processing
 async function extractContent(url) {
   try {
     console.log(`Extracting content from: ${url}`);
     
     const response = await axios.get(url, {
-      timeout: 5000, // 5 second timeout - very aggressive
+      timeout: 8000, // 8 second timeout
       headers: {
         'User-Agent': 'Mozilla/5.0 (compatible; DroughtBot/1.0)'
       }
     });
     
-    // Minimal text extraction
+    // Better text extraction
     const html = response.data;
     const textContent = html
       .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '')
@@ -34,16 +34,16 @@ async function extractContent(url) {
       .replace(/\s+/g, ' ')
       .trim();
     
-    return textContent.substring(0, 1500); // Very limited content
+    return textContent.substring(0, 3000); // More content per URL
   } catch (error) {
     console.error(`Error extracting content from ${url}:`, error.message);
     return `Error: ${error.message}`;
   }
 }
 
-// Main handler function with aggressive timeout prevention
+// Main handler function with balanced timeout prevention
 exports.handler = async (event, context) => {
-  console.log('Function started - ultra-fast mode');
+  console.log('Function started - enhanced mode');
   
   // Set CORS headers
   const headers = {
@@ -95,11 +95,11 @@ exports.handler = async (event, context) => {
       };
     }
 
-    // Limit to 1 URL maximum for ultra-fast processing
-    const limitedUrls = urls.slice(0, 1);
-    console.log(`Processing ${limitedUrls.length} URL for region: ${region}`);
+    // Process up to 3 URLs for better analysis
+    const limitedUrls = urls.slice(0, 3);
+    console.log(`Processing ${limitedUrls.length} URLs for region: ${region}`);
 
-    // Extract content from URL with timeout protection
+    // Extract content from URLs with timeout protection
     let allContent = '';
     const processedUrls = [];
 
@@ -108,7 +108,7 @@ exports.handler = async (event, context) => {
         const content = await Promise.race([
           extractContent(url),
           new Promise((_, reject) => 
-            setTimeout(() => reject(new Error('Content extraction timeout')), 6000)
+            setTimeout(() => reject(new Error('Content extraction timeout')), 10000)
           )
         ]);
         
@@ -128,38 +128,45 @@ exports.handler = async (event, context) => {
       };
     }
 
-    // Very limited content size
-    const maxContentLength = 2000;
+    // Increased content size for better analysis
+    const maxContentLength = 6000;
     if (allContent.length > maxContentLength) {
       allContent = allContent.substring(0, maxContentLength) + '\n\n[Content truncated]';
     }
 
-    // Simple prompt
-    const basePrompt = custom_prompt || `Provide a brief drought analysis for ${region}. Focus on current conditions and key concerns. Keep it very concise.`;
+    // Enhanced prompt for better analysis
+    const basePrompt = custom_prompt || `Analyze the drought and food security situation for ${region}. Focus on:
+1. Current drought conditions and severity
+2. Impact on agriculture and food production
+3. Water resource availability
+4. Food security concerns
+5. Key recommendations or alerts
+
+Provide a comprehensive but concise analysis based on the available data.`;
 
     const fullPrompt = `${basePrompt}\n\nContent:\n${allContent}`;
 
     console.log('Sending request to OpenAI...');
 
-    // Call OpenAI API with very strict timeout
+    // Call OpenAI API with reasonable timeout
     const completion = await Promise.race([
       openai.chat.completions.create({
         model: "gpt-4o-mini",
         messages: [
           {
             role: "system",
-            content: "You are a drought analyst. Provide very concise analysis."
+            content: "You are an expert drought and food security analyst. Provide comprehensive analysis based on the provided content. Focus on actionable insights and current conditions."
           },
           {
             role: "user",
             content: fullPrompt
           }
         ],
-        max_tokens: 500, // Very limited tokens
+        max_tokens: 1000, // More tokens for better analysis
         temperature: 0.3
       }),
       new Promise((_, reject) => 
-        setTimeout(() => reject(new Error('OpenAI API timeout')), 8000)
+        setTimeout(() => reject(new Error('OpenAI API timeout')), 12000)
       )
     ]);
 
@@ -172,7 +179,7 @@ exports.handler = async (event, context) => {
       region: region || 'Global Overview'
     };
 
-    console.log('Analysis completed successfully - under 10 seconds');
+    console.log('Analysis completed successfully');
 
     return {
       statusCode: 200,
