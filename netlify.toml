@@ -17,9 +17,9 @@
   status = 200
 
 [[plugins]]
-package = "@netlify/plugin-functions-install-core"
+  package = "@netlify/plugin-functions-install-core"
 
 [functions]
   node_bundler = "esbuild"
   timeout = 60
-  memory = 2048
+  memory = 2048 
