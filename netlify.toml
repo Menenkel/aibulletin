@@ -1,6 +1,7 @@
 [build]
   publish = "frontend/dist"
   functions = "netlify/functions"
+  command = "cd frontend && npm install && npm run build"
 
 [build.environment]
   NODE_VERSION = "18"
@@ -20,33 +21,5 @@ package = "@netlify/plugin-functions-install-core"
 
 [functions]
   node_bundler = "esbuild"
-
-[[functions]]
-  function = "crawl-and-summarize"
   timeout = 60
   memory = 2048
-
-[[functions]]
-  function = "api-key"
-  timeout = 10
-  memory = 512
-
-[[functions]]
-  function = "regions"
-  timeout = 10
-  memory = 512
-
-[[functions]]
-  function = "saved-urls"
-  timeout = 10
-  memory = 512
-
-[[functions]]
-  function = "health"
-  timeout = 10
-  memory = 512
-
-[[functions]]
-  function = "saved-prompt"
-  timeout = 10
-  memory = 512
