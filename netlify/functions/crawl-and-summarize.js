@@ -1,97 +1,49 @@
 const axios = require('axios');
 const OpenAI = require('openai');
-const puppeteer = require('puppeteer');
 
 // Initialize OpenAI client
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
 
-// Simple in-memory storage for saved data
+// Simple in-memory storage
 let savedData = {
   urls: [],
   custom_prompt: '',
   region: 'Global Overview'
 };
 
-// PDF processing function with reduced timeout
-async function processPDF(url) {
+// Simple content extraction function
+async function extractContent(url) {
   try {
-    console.log(`Processing PDF: ${url}`);
+    console.log(`Extracting content from: ${url}`);
     
-    // Download PDF content with shorter timeout for Netlify
     const response = await axios.get(url, {
-      responseType: 'arraybuffer',
-      timeout: 15000, // Reduced timeout
+      timeout: 10000, // 10 second timeout
       headers: {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
       }
     });
     
-    // For Netlify Functions, we'll extract text from PDF using a simple approach
-    // In a real implementation, you'd use a PDF parsing library
-    return `PDF content from ${url} - [PDF processing would extract text here]`;
+    // Extract text content from HTML
+    const html = response.data;
+    const textContent = html
+      .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '')
+      .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '')
+      .replace(/<[^>]+>/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+    
+    return textContent.substring(0, 3000); // Limit to 3000 characters
   } catch (error) {
-    console.error(`Error processing PDF ${url}:`, error.message);
-    return `Error processing PDF: ${error.message}`;
-  }
-}
-
-// Web crawling function with optimized settings
-async function crawlWebsite(url, maxDepth = 1) {
-  let browser = null;
-  try {
-    console.log(`Crawling: ${url} (depth: ${maxDepth})`);
-    
-    browser = await puppeteer.launch({
-      headless: true,
-      args: [
-        '--no-sandbox', 
-        '--disable-setuid-sandbox', 
-        '--disable-dev-shm-usage',
-        '--disable-gpu',
-        '--disable-web-security',
-        '--disable-features=VizDisplayCompositor'
-      ]
-    });
-    
-    const page = await browser.newPage();
-    await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36');
-    
-    // Set shorter timeout for Netlify Functions
-    await page.goto(url, { 
-      waitUntil: 'domcontentloaded', // Changed from networkidle for faster loading
-      timeout: 15000 // Reduced timeout
-    });
-    
-    // Extract text content with timeout
-    const content = await Promise.race([
-      page.evaluate(() => {
-        return document.body.innerText || document.body.textContent || '';
-      }),
-      new Promise((_, reject) => 
-        setTimeout(() => reject(new Error('Content extraction timeout')), 10000)
-      )
-    ]);
-    
-    return content.substring(0, 5000); // Limit content size
-  } catch (error) {
-    console.error(`Error crawling ${url}:`, error.message);
-    return `Error crawling ${url}: ${error.message}`;
-  } finally {
-    if (browser) {
-      try {
-        await browser.close();
-      } catch (closeError) {
-        console.error('Error closing browser:', closeError.message);
-      }
-    }
+    console.error(`Error extracting content from ${url}:`, error.message);
+    return `Error extracting content from ${url}: ${error.message}`;
   }
 }
 
 // Main handler function
 exports.handler = async (event, context) => {
-  console.log('Function started with event:', JSON.stringify(event, null, 2));
+  console.log('Function started');
   
   // Set CORS headers
   const headers = {
@@ -133,7 +85,7 @@ exports.handler = async (event, context) => {
       };
     }
 
-    const { urls, custom_prompt, region, follow_links, max_depth } = requestBody;
+    const { urls, custom_prompt, region } = requestBody;
 
     if (!urls || !Array.isArray(urls) || urls.length === 0) {
       return {
@@ -143,26 +95,18 @@ exports.handler = async (event, context) => {
       };
     }
 
-    // Limit number of URLs to prevent timeout
-    const limitedUrls = urls.slice(0, 3);
+    // Limit to 2 URLs maximum
+    const limitedUrls = urls.slice(0, 2);
     console.log(`Processing ${limitedUrls.length} URLs for region: ${region}`);
 
-    // Collect content from all URLs with timeout protection
+    // Extract content from URLs
     let allContent = '';
     const processedUrls = [];
 
     for (const url of limitedUrls) {
       try {
-        console.log(`Processing URL: ${url}`);
-        
-        if (url.toLowerCase().endsWith('.pdf')) {
-          const pdfContent = await processPDF(url);
-          allContent += `\n\n=== PDF Content from ${url} ===\n${pdfContent}`;
-        } else {
-          const webContent = await crawlWebsite(url, Math.min(max_depth || 1, 1));
-          allContent += `\n\n=== Web Content from ${url} ===\n${webContent}`;
-        }
-        
+        const content = await extractContent(url);
+        allContent += `\n\n=== Content from ${url} ===\n${content}`;
         processedUrls.push(url);
       } catch (error) {
         console.error(`Error processing ${url}:`, error);
@@ -178,46 +122,43 @@ exports.handler = async (event, context) => {
       };
     }
 
-    // Limit content size to prevent token limit issues
-    const maxContentLength = 8000;
+    // Limit content size
+    const maxContentLength = 4000;
     if (allContent.length > maxContentLength) {
-      allContent = allContent.substring(0, maxContentLength) + '\n\n[Content truncated due to length limits]';
+      allContent = allContent.substring(0, maxContentLength) + '\n\n[Content truncated]';
     }
 
-    // Prepare the prompt for OpenAI
-    const basePrompt = custom_prompt || `Analyze the following content and provide a comprehensive drought analysis for ${region}. Focus on:
-1. Current drought conditions and severity
-2. Impact on agriculture and food security
-3. Water availability and management
-4. Climate patterns and trends
-5. Recommendations for stakeholders
-6. Key risks and concerns
+    // Prepare the prompt
+    const basePrompt = custom_prompt || `Provide a brief drought analysis for ${region} based on the following content. Focus on:
+1. Current drought conditions
+2. Impact on agriculture
+3. Key concerns
 
-Please structure your response with clear sections and actionable insights.`;
+Keep the response concise and structured.`;
 
-    const fullPrompt = `${basePrompt}\n\nContent to analyze:\n${allContent}`;
+    const fullPrompt = `${basePrompt}\n\nContent:\n${allContent}`;
 
     console.log('Sending request to OpenAI...');
 
-    // Call OpenAI API with timeout protection
+    // Call OpenAI API with strict timeout
     const completion = await Promise.race([
       openai.chat.completions.create({
         model: "gpt-4o-mini",
         messages: [
           {
             role: "system",
-            content: "You are an expert drought analyst with deep knowledge of climate science, agriculture, and water resource management. Provide detailed, accurate, and actionable analysis."
+            content: "You are a drought analyst. Provide concise, accurate analysis."
           },
           {
             role: "user",
             content: fullPrompt
           }
         ],
-        max_tokens: 2000, // Reduced token limit
+        max_tokens: 1000, // Very limited tokens
         temperature: 0.3
       }),
       new Promise((_, reject) => 
-        setTimeout(() => reject(new Error('OpenAI API timeout')), 25000)
+        setTimeout(() => reject(new Error('OpenAI API timeout')), 15000)
       )
     ]);
 
@@ -250,7 +191,7 @@ Please structure your response with clear sections and actionable insights.`;
       headers,
       body: JSON.stringify({ 
         error: error.message,
-        details: 'An error occurred during processing. Please check the logs for more details.'
+        details: 'An error occurred during processing.'
       })
     };
   }
