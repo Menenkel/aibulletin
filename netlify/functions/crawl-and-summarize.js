@@ -1,6 +1,8 @@
 const axios = require('axios');
 const OpenAI = require('openai');
 const puppeteer = require('puppeteer');
+const pdf = require('pdf-parse');
+const cheerio = require('cheerio');
 
 // Initialize OpenAI client
 const openai = new OpenAI({
@@ -55,9 +57,9 @@ async function extractTextFromPdf(url) {
       return `Error: URL does not appear to be a PDF file (Content-Type: ${contentType})`;
     }
     
-    // For now, return a placeholder since PDF parsing in Netlify functions is complex
-    // In a real implementation, you'd use a PDF parsing library
-    return `PDF content from ${url} - Content extracted (PDF processing available in full version)`;
+    // Extract text from PDF using pdf-parse
+    const pdfData = await pdf(response.data);
+    return pdfData.text || 'No text content could be extracted from the PDF.';
     
   } catch (error) {
     console.error(`Error processing PDF ${url}:`, error.message);
@@ -85,7 +87,7 @@ async function crawlUrl(url, browser, depth = 1, maxDepth = 2, visitedUrls = new
   try {
     await page.goto(url, { timeout: 30000, waitUntil: 'networkidle' });
     
-    // Extract clean main content
+    // Extract clean main content using cheerio for better parsing
     const mainText = await page.evaluate(() => {
       // Remove unwanted elements
       document.querySelectorAll('script, style, nav, header, footer, aside, .ad, .advertisement, .sidebar').forEach(el => el.remove());
@@ -100,11 +102,16 @@ async function crawlUrl(url, browser, depth = 1, maxDepth = 2, visitedUrls = new
       return document.body.innerText;
     });
     
-    // If content is too short, try fallback
+    // If content is too short, try fallback with better text extraction
     if (!mainText || mainText.trim().length < 100) {
       const content = await page.content();
-      // Simple text extraction (in a real implementation, you'd use a proper HTML parser)
-      const textContent = content.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+      const $ = cheerio.load(content);
+      
+      // Remove unwanted elements
+      $('script, style, nav, header, footer, aside, .ad, .advertisement, .sidebar').remove();
+      
+      // Get text content
+      const textContent = $.text().replace(/\s+/g, ' ').trim();
       return textContent;
     }
     
@@ -255,8 +262,10 @@ exports.handler = async (event, context) => {
               
               if (!content || content.trim().length < 100) {
                 const pageContent = await page.content();
-                // Simple text extraction
-                const textContent = pageContent.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+                // Use cheerio for better text extraction
+                const $ = cheerio.load(pageContent);
+                $('script, style, nav, header, footer, aside, .ad, .advertisement, .sidebar').remove();
+                const textContent = $.text().replace(/\s+/g, ' ').trim();
                 allContent.push(`Source: ${url}\n${textContent.substring(0, 4000)}\n\n`);
               } else {
                 allContent.push(`Source: ${url}\n${content.substring(0, 4000)}\n\n`);
