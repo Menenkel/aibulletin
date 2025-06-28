@@ -1,44 +1,33 @@
 import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { 
-  Layout, 
-  Menu, 
-  Card, 
-  Button, 
-  Input, 
-  Select, 
-  Switch, 
-  Typography, 
-  Space, 
+import {
+  GlobalOutlined,
+  FileTextOutlined,
+  SettingOutlined,
+  SaveOutlined,
+  DeleteOutlined,
+  LoadingOutlined,
+  CheckCircleOutlined,
+  ExclamationCircleOutlined,
+  InfoCircleOutlined
+} from "@ant-design/icons";
+import {
+  Layout,
+  Menu,
+  Typography,
+  Space,
   Divider,
   Alert,
   Spin,
-  Tag,
-  Progress,
-  Statistic,
+  Modal,
+  Form,
+  Select,
   Row,
   Col,
-  Steps,
-  Timeline,
-  message,
-  Tooltip
+  Button,
+  Card,
+  Input
 } from "antd";
-import {
-  GlobalOutlined,
-  SearchOutlined,
-  SettingOutlined,
-  FileTextOutlined,
-  DatabaseOutlined,
-  BarChartOutlined,
-  KeyOutlined,
-  LinkOutlined,
-  MenuOutlined,
-  LoadingOutlined,
-  CheckCircleOutlined,
-  ClockCircleOutlined,
-  ExclamationCircleOutlined,
-  StopOutlined
-} from "@ant-design/icons";
 
 const { Header, Sider, Content } = Layout;
 const { Title, Text, Paragraph } = Typography;
