@@ -10,7 +10,8 @@ import {
   CheckCircleOutlined,
   ExclamationCircleOutlined,
   InfoCircleOutlined,
-  BarChartOutlined
+  BarChartOutlined,
+  SearchOutlined
 } from "@ant-design/icons";
 import {
   Layout,
