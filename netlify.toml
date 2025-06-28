@@ -23,8 +23,8 @@ package = "@netlify/plugin-functions-install-core"
 
 [[functions]]
   function = "crawl-and-summarize"
-  timeout = 30
-  memory = 1024
+  timeout = 60
+  memory = 2048
 
 [[functions]]
   function = "api-key"
