@@ -17,3 +17,6 @@
 
 [[plugins]]
 package = "@netlify/plugin-functions-install-core"
+
+[functions."crawl-and-summarize"]
+  timeout = 60
