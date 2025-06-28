@@ -7,6 +7,13 @@
     "dev": "cd frontend && npm run dev",
     "start": "cd frontend && npm run preview"
   },
+  "dependencies": {
+    "openai": "^4.28.0",
+    "axios": "^1.6.0",
+    "cheerio": "^1.0.0-rc.12",
+    "puppeteer": "^24.0.0",
+    "pdf-parse": "^1.1.1"
+  },
   "engines": {
     "node": "18.x"
   },
