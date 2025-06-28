@@ -15,20 +15,5 @@
   to = "/index.html"
   status = 200
 
-[functions."crawl-and-summarize-simple"]
-  timeout = 30
-
-[functions."api-key-simple"]
-  timeout = 10
-
-[functions."health-simple"]
-  timeout = 5
-
-[functions."regions-simple"]
-  timeout = 5
-
-[functions."saved-urls-simple"]
-  timeout = 5
-
 [[plugins]]
 package = "@netlify/plugin-functions-install-core"
