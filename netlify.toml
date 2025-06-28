@@ -22,5 +22,5 @@ package = "@netlify/plugin-functions-install-core"
   node_bundler = "esbuild"
 
 [functions."crawl-and-summarize"]
-  timeout = 20
-  memory = 512
+  timeout = 15
+  memory = 256

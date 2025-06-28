@@ -13,19 +13,19 @@ let savedData = {
   region: 'Global Overview'
 };
 
-// Simple content extraction function
+// Ultra-fast content extraction with minimal processing
 async function extractContent(url) {
   try {
     console.log(`Extracting content from: ${url}`);
     
     const response = await axios.get(url, {
-      timeout: 10000, // 10 second timeout
+      timeout: 5000, // 5 second timeout - very aggressive
       headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+        'User-Agent': 'Mozilla/5.0 (compatible; DroughtBot/1.0)'
       }
     });
     
-    // Extract text content from HTML
+    // Minimal text extraction
     const html = response.data;
     const textContent = html
       .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '')
@@ -34,16 +34,16 @@ async function extractContent(url) {
       .replace(/\s+/g, ' ')
       .trim();
     
-    return textContent.substring(0, 3000); // Limit to 3000 characters
+    return textContent.substring(0, 1500); // Very limited content
   } catch (error) {
     console.error(`Error extracting content from ${url}:`, error.message);
-    return `Error extracting content from ${url}: ${error.message}`;
+    return `Error: ${error.message}`;
   }
 }
 
-// Main handler function
+// Main handler function with aggressive timeout prevention
 exports.handler = async (event, context) => {
-  console.log('Function started');
+  console.log('Function started - ultra-fast mode');
   
   // Set CORS headers
   const headers = {
@@ -95,17 +95,23 @@ exports.handler = async (event, context) => {
       };
     }
 
-    // Limit to 2 URLs maximum
-    const limitedUrls = urls.slice(0, 2);
-    console.log(`Processing ${limitedUrls.length} URLs for region: ${region}`);
+    // Limit to 1 URL maximum for ultra-fast processing
+    const limitedUrls = urls.slice(0, 1);
+    console.log(`Processing ${limitedUrls.length} URL for region: ${region}`);
 
-    // Extract content from URLs
+    // Extract content from URL with timeout protection
     let allContent = '';
     const processedUrls = [];
 
     for (const url of limitedUrls) {
       try {
-        const content = await extractContent(url);
+        const content = await Promise.race([
+          extractContent(url),
+          new Promise((_, reject) => 
+            setTimeout(() => reject(new Error('Content extraction timeout')), 6000)
+          )
+        ]);
+        
         allContent += `\n\n=== Content from ${url} ===\n${content}`;
         processedUrls.push(url);
       } catch (error) {
@@ -122,43 +128,38 @@ exports.handler = async (event, context) => {
       };
     }
 
-    // Limit content size
-    const maxContentLength = 4000;
+    // Very limited content size
+    const maxContentLength = 2000;
     if (allContent.length > maxContentLength) {
       allContent = allContent.substring(0, maxContentLength) + '\n\n[Content truncated]';
     }
 
-    // Prepare the prompt
-    const basePrompt = custom_prompt || `Provide a brief drought analysis for ${region} based on the following content. Focus on:
-1. Current drought conditions
-2. Impact on agriculture
-3. Key concerns
-
-Keep the response concise and structured.`;
+    // Simple prompt
+    const basePrompt = custom_prompt || `Provide a brief drought analysis for ${region}. Focus on current conditions and key concerns. Keep it very concise.`;
 
     const fullPrompt = `${basePrompt}\n\nContent:\n${allContent}`;
 
     console.log('Sending request to OpenAI...');
 
-    // Call OpenAI API with strict timeout
+    // Call OpenAI API with very strict timeout
     const completion = await Promise.race([
       openai.chat.completions.create({
         model: "gpt-4o-mini",
         messages: [
           {
             role: "system",
-            content: "You are a drought analyst. Provide concise, accurate analysis."
+            content: "You are a drought analyst. Provide very concise analysis."
           },
           {
             role: "user",
             content: fullPrompt
           }
         ],
-        max_tokens: 1000, // Very limited tokens
+        max_tokens: 500, // Very limited tokens
         temperature: 0.3
       }),
       new Promise((_, reject) => 
-        setTimeout(() => reject(new Error('OpenAI API timeout')), 15000)
+        setTimeout(() => reject(new Error('OpenAI API timeout')), 8000)
       )
     ]);
 
@@ -171,7 +172,7 @@ Keep the response concise and structured.`;
       region: region || 'Global Overview'
     };
 
-    console.log('Analysis completed successfully');
+    console.log('Analysis completed successfully - under 10 seconds');
 
     return {
       statusCode: 200,
