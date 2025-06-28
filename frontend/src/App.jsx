@@ -125,7 +125,7 @@ function App() {
       .catch((err) => console.error("Error loading regions:", err));
 
     // Check API key status
-    fetch(getApiEndpoint('api-key/status'))
+    fetch(getApiEndpoint('api-key'))
       .then((res) => res.json())
       .then((data) => setApiKeyStatus(data.has_api_key ? "set" : "not_set"))
       .catch((err) => console.error("Error checking API key status:", err));
