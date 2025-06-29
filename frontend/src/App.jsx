@@ -55,15 +55,13 @@ const { Step } = Steps;
 // API configuration
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
 
-// Check if we're in production (Netlify)
-const isProduction = window.location.hostname !== 'localhost';
-
-// Use different endpoints for production vs development
 const getApiEndpoint = (endpoint) => {
-  if (isProduction) {
-    return `/.netlify/functions/${endpoint}`;
+  // Always use the API_BASE_URL if set, otherwise fallback to Netlify Functions (for legacy/dev)
+  if (API_BASE_URL && !API_BASE_URL.includes('localhost')) {
+    return `${API_BASE_URL.replace(/\/$/, '')}/${endpoint}`;
   }
-  return `${API_BASE_URL}/${endpoint}`;
+  // fallback for local dev or if env var is missing
+  return `/.netlify/functions/${endpoint}`;
 };
 
 // Updated with dark mode toggle and background animation
