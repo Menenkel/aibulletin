@@ -52,6 +52,9 @@ class CrawlRequest(BaseModel):
     region: str = "Global Overview"
     custom_prompt: str = ""
 
+class SystemPromptRequest(BaseModel):
+    system_prompt: str
+
 class SavedUrl(BaseModel):
     urls: List[str]
     region: str
@@ -72,6 +75,33 @@ async def health_check():
 async def root():
     """Root endpoint."""
     return {"message": "Drought Bulletin API is running"}
+
+# System prompt management
+DEFAULT_SYSTEM_PROMPT = (
+    "You're a drought analyst. Analyze the provided URLs and create a comprehensive drought-focused summary for the selected region. Generate the headlines before summarizing the content. Include up to two paragraphs for the following topics and headlines:\n\n"
+    "1. Current Drought Conditions: Assess the severity and extent of drought in the region\n"
+    "2. Water Resources: Status of surface water, groundwater, and reservoir levels\n"
+    "3. Impact on food security and Agriculture: Effects on crops and livestock\n"
+    "4. Food prices and economic impact\n\n"
+    "Strictly use all headlines based on these four categories and separate the sections with breaks.\n"
+    "Ensure that the text describes current conditions without phrases such as 'the report highlights'. Simply summarize conditions from the URLs or PDFs provided, no other information."
+)
+
+@app.get("/system-prompt")
+async def get_system_prompt():
+    """Get the current system prompt, or the default if not set."""
+    prompt = storage.load_system_prompt()
+    if not prompt:
+        prompt = DEFAULT_SYSTEM_PROMPT
+    return {"system_prompt": prompt}
+
+@app.post("/system-prompt")
+async def set_system_prompt(request: SystemPromptRequest):
+    """Set the system prompt."""
+    if storage.save_system_prompt(request.system_prompt):
+        return {"message": "System prompt saved successfully"}
+    else:
+        raise HTTPException(status_code=500, detail="Failed to save system prompt")
 
 # API key management
 @app.post("/api-key")
@@ -168,8 +198,12 @@ async def crawl_and_summarize(request: CrawlRequest):
         # Generate analysis using OpenAI
         client = OpenAI(api_key=api_key)
         
-        # Create the prompt
-        base_prompt = f"""
+        # Get the saved system prompt or use default
+        saved_system_prompt = storage.load_system_prompt()
+        system_prompt = saved_system_prompt if saved_system_prompt else "You are a drought and food security analyst. Provide clear, structured analysis without using markdown formatting (no ## or **)."
+        
+        # Create the user prompt
+        user_prompt = f"""
         Analyze the following content from drought and food security monitoring sources for {request.region}.
         
         Provide a structured drought bulletin with the following sections:
@@ -179,17 +213,19 @@ async def crawl_and_summarize(request: CrawlRequest):
         4. Food Prices and Economic Impact: Analysis of price trends and economic consequences
         
         Focus on recent developments, trends, and actionable insights. Provide specific data and examples where available.
+        
+        IMPORTANT: Do not use any markdown formatting (no ## or **). Use plain text only.
         """
         
         if request.custom_prompt:
-            base_prompt += f"\n\nAdditional analysis requirements: {request.custom_prompt}"
+            user_prompt += f"\n\nAdditional analysis requirements: {request.custom_prompt}"
         
         # Make the API call
         response = client.chat.completions.create(
             model="gpt-4o-mini",
             messages=[
-                {"role": "system", "content": "You are a drought and food security analyst. Provide clear, structured analysis."},
-                {"role": "user", "content": f"{base_prompt}\n\nContent to analyze:\n{combined_content}"}
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": f"{user_prompt}\n\nContent to analyze:\n{combined_content}"}
             ],
             max_tokens=1500,
             temperature=0.3

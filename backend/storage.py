@@ -10,6 +10,7 @@ class Storage:
         
         self.api_key_file = self.storage_dir / "api_key.json"
         self.urls_file = self.storage_dir / "saved_urls.json"
+        self.system_prompt_file = self.storage_dir / "system_prompt.json"
     
     def save_api_key(self, api_key: str) -> bool:
         """Save API key to file."""
@@ -31,6 +32,27 @@ class Storage:
         except Exception as e:
             print(f"Error loading API key: {e}")
         return None
+    
+    def save_system_prompt(self, prompt: str) -> bool:
+        """Save system prompt to file."""
+        try:
+            with open(self.system_prompt_file, 'w') as f:
+                json.dump({"system_prompt": prompt}, f)
+            return True
+        except Exception as e:
+            print(f"Error saving system prompt: {e}")
+            return False
+    
+    def load_system_prompt(self) -> str:
+        """Load system prompt from file."""
+        try:
+            if self.system_prompt_file.exists():
+                with open(self.system_prompt_file, 'r') as f:
+                    data = json.load(f)
+                    return data.get("system_prompt", "")
+        except Exception as e:
+            print(f"Error loading system prompt: {e}")
+        return ""
     
     def save_urls(self, urls: List[str], region: str = "Global Overview", custom_prompt: str = "") -> bool:
         """Save URLs with region and custom prompt to file."""

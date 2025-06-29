@@ -61,6 +61,17 @@ client = None
 # Global set to track visited URLs during crawling
 visited_urls = set()
 
+# Default system prompt
+DEFAULT_SYSTEM_PROMPT = (
+    "You're a drought analyst. Analyze the provided URLs and create a comprehensive drought-focused summary for the selected region. Generate the headlines before summarizing the content. Include up to two paragraphs for the following topics and headlines:\n\n"
+    "1. Current Drought Conditions: Assess the severity and extent of drought in the region\n"
+    "2. Water Resources: Status of surface water, groundwater, and reservoir levels\n"
+    "3. Impact on food security and Agriculture: Effects on crops and livestock\n"
+    "4. Food prices and economic impact\n\n"
+    "Strictly use all headlines based on these four categories and separate the sections with breaks.\n"
+    "Ensure that the text describes current conditions without phrases such as 'the report highlights'. Simply summarize conditions from the URLs or PDFs provided. Use no external information."
+)
+
 class CrawlRequest(BaseModel):
     urls: List[str]
     custom_prompt: str
@@ -74,6 +85,9 @@ class ApiKeyRequest(BaseModel):
 class ApiKeyResponse(BaseModel):
     status: str
     message: str
+
+class SystemPromptRequest(BaseModel):
+    system_prompt: str
 
 def is_pdf_url(url: str) -> bool:
     """Check if a URL points to a PDF file."""
@@ -290,6 +304,22 @@ async def get_saved_urls():
     if recent_entries:
         return {"urls": recent_entries[0].get("urls", []), "custom_prompt": recent_entries[0].get("custom_prompt", "")}
     return {"urls": [], "custom_prompt": ""}
+
+@app.get("/system-prompt")
+async def get_system_prompt():
+    """Get the current system prompt, or the default if not set."""
+    prompt = storage.load_system_prompt()
+    if not prompt:
+        prompt = DEFAULT_SYSTEM_PROMPT
+    return {"system_prompt": prompt}
+
+@app.post("/system-prompt")
+async def set_system_prompt(request: SystemPromptRequest):
+    """Set the system prompt."""
+    if storage.save_system_prompt(request.system_prompt):
+        return {"message": "System prompt saved successfully"}
+    else:
+        raise HTTPException(status_code=500, detail="Failed to save system prompt")
 
 @app.post("/crawl-and-summarize")
 async def crawl_and_summarize(request: CrawlRequest):

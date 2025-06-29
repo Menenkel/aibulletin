@@ -42,7 +42,8 @@ import {
   Timeline,
   Switch,
   Progress,
-  Tooltip
+  Tooltip,
+  Collapse
 } from "antd";
 
 const { Header, Sider, Content } = Layout;
@@ -73,7 +74,8 @@ function App() {
   const [apiKeyLoading, setApiKeyLoading] = useState(false);
   const [selectedRegion, setSelectedRegion] = useState("");
   const [urls, setUrls] = useState("");
-  const [customPrompt, setCustomPrompt] = useState("");
+  const [systemPrompt, setSystemPrompt] = useState("");
+  const [systemPromptLoading, setSystemPromptLoading] = useState(false);
   const [results, setResults] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [regions, setRegions] = useState([]);
@@ -142,11 +144,18 @@ function App() {
         if (data && data.urls && Array.isArray(data.urls)) {
           setUrls(data.urls.join("\n"));
         }
-        if (data && data.custom_prompt) {
-          setCustomPrompt(data.custom_prompt);
-        }
       })
       .catch((err) => console.error("Error loading saved URLs:", err));
+
+    // Load system prompt
+    fetch(getApiEndpoint('system-prompt'))
+      .then((res) => res.json())
+      .then((data) => {
+        if (data && data.system_prompt) {
+          setSystemPrompt(data.system_prompt);
+        }
+      })
+      .catch((err) => console.error("Error loading system prompt:", err));
 
     // Check health status
     fetch(getApiEndpoint('health'))
@@ -304,10 +313,8 @@ function App() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           urls: urlList,
-          custom_prompt: customPrompt || "Analyze the provided content for drought conditions, food security, water resources, and food prices in the specified region.",
           region: selectedRegion,
-          follow_links: followLinks,
-          max_depth: maxDepth
+          custom_prompt: ""
         }),
         signal: abortController.signal
       });
@@ -592,6 +599,29 @@ function App() {
         </Paragraph>
       );
     }).filter(Boolean);
+  };
+
+  const handleSystemPromptSave = async () => {
+    setSystemPromptLoading(true);
+    
+    try {
+      const response = await fetch(getApiEndpoint('system-prompt'), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ system_prompt: systemPrompt }),
+      });
+      
+      if (response.ok) {
+        message.success('System prompt saved successfully!');
+      } else {
+        message.error('Failed to save system prompt');
+      }
+    } catch (error) {
+      console.error("Error saving system prompt:", error);
+      message.error('Failed to save system prompt. Please try again.');
+    } finally {
+      setSystemPromptLoading(false);
+    }
   };
 
   const menuItems = [
@@ -890,6 +920,47 @@ function App() {
               </Card>
             )}
 
+            {/* System Prompt Section */}
+            {currentView === 'analysis' && (
+              <Collapse 
+                defaultActiveKey={[]} 
+                style={{ marginBottom: 16 }}
+                items={[
+                  {
+                    key: '1',
+                    label: <span><SettingOutlined /> AI Analysis Configuration</span>,
+                    children: (
+                      <Row gutter={[16, 16]}>
+                        <Col xs={24}>
+                          <div>
+                            <Text strong>System Prompt</Text>
+                            <Text type="secondary" style={{ display: 'block', marginBottom: 8 }}>
+                              Configure how the AI should analyze drought and food security data. This prompt will be used for all analyses.
+                            </Text>
+                            <TextArea
+                              rows={6}
+                              placeholder="Enter the system prompt for AI analysis..."
+                              value={systemPrompt}
+                              onChange={(e) => setSystemPrompt(e.target.value)}
+                              style={{ marginTop: 8 }}
+                            />
+                            <Button 
+                              type="primary" 
+                              onClick={handleSystemPromptSave}
+                              loading={systemPromptLoading}
+                              style={{ marginTop: 8 }}
+                            >
+                              Save System Prompt
+                            </Button>
+                          </div>
+                        </Col>
+                      </Row>
+                    )
+                  }
+                ]}
+              />
+            )}
+
             {/* Main Analysis Form */}
             {currentView === 'analysis' && (
               <Card 
@@ -915,7 +986,11 @@ function App() {
                           option?.children?.toLowerCase().indexOf(input.toLowerCase()) >= 0
                         }
                       >
-                        {regions.map((region) => (
+                        {/* Always include Global Overview as the first option */}
+                        <Option key="Global Overview" value="Global Overview">
+                          Global Overview
+                        </Option>
+                        {regions.filter(region => region !== "Global Overview").map((region) => (
                           <Option key={region} value={region}>
                             {region}
                           </Option>
@@ -964,19 +1039,6 @@ function App() {
                         placeholder="Enter URLs (one per line)&#10;Examples:&#10;https://www.cropmonitor.org/global-crop-monitor&#10;https://www.fao.org/3/ca9509en/ca9509en.pdf"
                         value={urls}
                         onChange={(e) => setUrls(e.target.value)}
-                        style={{ marginTop: 8 }}
-                      />
-                    </div>
-                  </Col>
-                  
-                  <Col xs={24}>
-                    <div>
-                      <Text strong>Custom Analysis Prompt (Optional)</Text>
-                      <TextArea
-                        rows={3}
-                        placeholder="Specify any particular aspects you want the AI to focus on in the analysis. Leave empty for default drought analysis."
-                        value={customPrompt}
-                        onChange={(e) => setCustomPrompt(e.target.value)}
                         style={{ marginTop: 8 }}
                       />
                     </div>
