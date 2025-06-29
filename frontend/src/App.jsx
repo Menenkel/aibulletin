@@ -314,7 +314,9 @@ function App() {
         body: JSON.stringify({
           urls: urlList,
           region: selectedRegion,
-          custom_prompt: ""
+          custom_prompt: "",
+          follow_links: followLinks,
+          max_depth: maxDepth
         }),
         signal: abortController.signal
       });

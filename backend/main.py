@@ -239,19 +239,15 @@ async def startup_event():
     """Load saved API key on startup."""
     global api_key, client
     
-    # First try to load from environment variable (for production)
-    env_api_key = os.getenv("OPENAI_API_KEY")
-    if env_api_key:
-        api_key = env_api_key
+    # Prioritize environment variable for API key, fallback to storage
+    loaded_key = os.getenv("OPENAI_API_KEY") or storage.load_api_key()
+    if loaded_key:
+        api_key = loaded_key
         client = OpenAI(api_key=api_key)
-        print("Loaded API key from environment variable")
-    else:
-        # Fall back to saved API key from storage
-        saved_api_key = storage.load_api_key()
-        if saved_api_key:
-            api_key = saved_api_key
-            client = OpenAI(api_key=api_key)
-            print("Loaded saved API key from storage")
+        if os.getenv("OPENAI_API_KEY"):
+            print("Loaded API key from environment variable")
+        else:
+            print("Loaded API key from storage")
     
     # Print PDF support status
     if PDF_SUPPORT:
@@ -263,20 +259,25 @@ async def startup_event():
 async def set_api_key(request: ApiKeyRequest):
     global api_key, client
     
+    # Special handling for 'story' API key for local development
+    if request.api_key == "story":
+        api_key = "story"
+        client = OpenAI(api_key=api_key)  # Will not be used for real calls
+        storage.save_api_key(api_key)
+        print("Using special 'story' API key for development.")
+        return ApiKeyResponse(status="success", message="API key set successfully (development mode)")
+
     try:
-        # Test the API key
+        # Test the API key for any other value
         test_client = OpenAI(api_key=request.api_key)
-        response = test_client.chat.completions.create(
+        test_client.chat.completions.create(
             model="gpt-4o-mini",
             messages=[{"role": "user", "content": "Hello"}],
-            max_tokens=5
+            max_tokens=5,
         )
         
-        # If we get here, the API key is valid
         api_key = request.api_key
         client = OpenAI(api_key=api_key)
-        
-        # Save to persistent storage
         storage.save_api_key(api_key)
         
         return ApiKeyResponse(status="success", message="API key set successfully")
@@ -327,6 +328,23 @@ async def crawl_and_summarize(request: CrawlRequest):
     
     if not api_key:
         raise HTTPException(status_code=400, detail="API key not set")
+
+    # Development mode with 'story' key
+    if api_key == "story":
+        print("Running in development mode with 'story' API key. Returning mock data.")
+        await asyncio.sleep(3)  # Simulate processing time
+        return {
+            "analysis": (
+                "This is a mock analysis for development purposes because the 'story' API key was used. "
+                "This mode allows testing the application flow without making real calls to the OpenAI API.\n\n"
+                "1. Current Drought Conditions: Mock assessment of severe drought.\n"
+                "2. Water Resources: Mock status of low water levels.\n"
+                "3. Impact on Agriculture: Mock effects on crops.\n"
+                "4. Economic Impact: Mock summary of economic consequences."
+            ),
+            "urls_analyzed": len(request.urls),
+            "followed_links": request.follow_links,
+        }
     
     if not request.urls:
         raise HTTPException(status_code=400, detail="No URLs provided")
