@@ -371,48 +371,35 @@ async def crawl_and_summarize(request: CrawlRequest):
                 total_urls_crawled += 1
             else:
                 print(f"Processing web page: {url}")
-                # Handle web pages with Playwright
-                async with async_playwright() as p:
-                    browser = await p.chromium.launch(headless=True)
-                    
-                    try:
-                        if request.follow_links:
-                            # Use recursive crawling
-                            content = await crawl_url(url, browser, depth=1, max_depth=request.max_depth)
-                            total_urls_crawled += len(visited_urls)
-                        else:
-                            # Use simple single-page crawling
+                try:
+                    async with async_playwright() as p:
+                        try:
+                            browser = await p.chromium.launch(headless=True)
+                        except Exception as e:
+                            print(f"Error launching Playwright browser: {e}")
+                            all_content.append(f"Source: {url}\nError launching browser: {str(e)}\n\n")
+                            continue
+                        try:
                             page = await browser.new_page()
-                            await page.goto(url, wait_until="networkidle", timeout=300000)
-                            
-                            content = await page.evaluate("""
-                                () => {
-                                    const scripts = document.querySelectorAll('script, style, nav, header, footer, .ad, .advertisement');
-                                    scripts.forEach(el => el.remove());
-                                    
-                                    const main = document.querySelector('main, article, .content, .post, .entry');
-                                    if (main) {
-                                        return main.innerText;
-                                    }
-                                    
-                                    return document.body.innerText;
-                                }
-                            """)
-                            
-                            if not content or len(content.strip()) < 100:
-                                content = await page.content()
-                                soup = BeautifulSoup(content, 'html.parser')
-                                content = soup.get_text()
-                            
-                            await page.close()
-                            total_urls_crawled += 1
-                        
-                        # Add URL source to content for context
-                        all_content.append(f"Source: {url}\n{content[:4000]}\n\n")
-                        
-                    finally:
-                        await browser.close()
-                        
+                            await page.goto(url, timeout=300000, wait_until='networkidle')
+                            # Extract hrefs with robust error handling
+                            try:
+                                hrefs = await page.eval_on_selector_all("a[href]", "els => els.map(e => e.href)")
+                                print(f"Extracted {len(hrefs)} hrefs from {url} at depth 1")
+                            except Exception as e:
+                                print(f"Error extracting hrefs from {url}: {e}")
+                                hrefs = []
+                            # Continue with the rest of the crawling logic as before
+                        finally:
+                            await browser.close()
+                except Exception as e:
+                    print(f"Error with Playwright for {url}: {e}")
+                    all_content.append(f"Source: {url}\nError with Playwright: {str(e)}\n\n")
+                    continue
+            
+            # Add URL source to content for context
+            all_content.append(f"Source: {url}\n{content[:4000]}\n\n")
+            
         except Exception as e:
             all_content.append(f"Source: {url}\nError processing URL: {str(e)}\n\n")
             total_urls_crawled += 1
