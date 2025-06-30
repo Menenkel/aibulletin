@@ -54,6 +54,7 @@ const { Step } = Steps;
 
 // API configuration
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
+const DEFAULT_API_KEY = import.meta.env.VITE_OPENAI_API_KEY || "";
 
 const getApiEndpoint = (endpoint) => {
   // Always use the API_BASE_URL if set, otherwise fallback to Netlify Functions (for legacy/dev)
@@ -66,8 +67,8 @@ const getApiEndpoint = (endpoint) => {
 
 // Updated with dark mode toggle and background animation
 function App() {
-  const [apiKey, setApiKey] = useState("");
-  const [apiKeyStatus, setApiKeyStatus] = useState("not_set");
+  const [apiKey, setApiKey] = useState(DEFAULT_API_KEY);
+  const [apiKeyStatus, setApiKeyStatus] = useState(DEFAULT_API_KEY ? "set" : "not_set");
   const [apiKeyConfigured, setApiKeyConfigured] = useState(false);
   const [apiKeyLoading, setApiKeyLoading] = useState(false);
   const [selectedRegion, setSelectedRegion] = useState("");
@@ -129,11 +130,13 @@ function App() {
       })
       .catch((err) => console.error("Error loading regions:", err));
 
-    // Check API key status
-    fetch(getApiEndpoint('api-key/status'))
-      .then((res) => res.json())
-      .then((data) => setApiKeyStatus(data.has_api_key ? "set" : "not_set"))
-      .catch((err) => console.error("Error checking API key status:", err));
+    // Check API key status only if not set by env
+    if (!DEFAULT_API_KEY) {
+      fetch(getApiEndpoint('api-key/status'))
+        .then((res) => res.json())
+        .then((data) => setApiKeyStatus(data.has_api_key ? "set" : "not_set"))
+        .catch((err) => console.error("Error checking API key status:", err));
+    }
 
     // Load saved URLs
     fetch(getApiEndpoint('saved-urls'))
@@ -884,7 +887,7 @@ function App() {
             )}
 
             {/* API Key Section */}
-            {apiKeyStatus !== "set" && currentView === 'analysis' && (
+            {apiKeyStatus !== "set" && currentView === 'analysis' && !DEFAULT_API_KEY && (
               <Card 
                 title={
                   <Space>
