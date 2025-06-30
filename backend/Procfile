@@ -1,2 +1,2 @@
-release: python -m playwright install chromium
+release: python -m playwright install-deps && python -m playwright install chromium
 web: python main.py
