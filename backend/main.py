@@ -433,14 +433,21 @@ async def crawl_and_summarize(request: CrawlRequest):
     system_prompt = storage.load_system_prompt()
     if not system_prompt:
         system_prompt = DEFAULT_SYSTEM_PROMPT
-    
+
+    # Replace {region} placeholder with the actual selected region
+    system_prompt = system_prompt.replace("{region}", request.region)
+
     try:
         # Get comprehensive summary from OpenAI
         response = client.chat.completions.create(
             model="gpt-4o-mini",
             messages=[
                 {"role": "system", "content": system_prompt},
-                {"role": "user", "content": f"Please analyze all the following content sources and provide a comprehensive regional analysis:\n\n{combined_content[:20000]}"}
+                {"role": "user", "content": (
+                    f"Please analyze all the following content sources and provide a comprehensive analysis for the region: {request.region}.\n"
+                    f"Focus ONLY on information relevant to the region: {request.region}. Ignore unrelated or global information.\n\n"
+                    f"{combined_content[:20000]}"
+                )}
             ],
             max_tokens=4000,
             temperature=0.3
