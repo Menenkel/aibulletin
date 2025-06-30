@@ -434,10 +434,10 @@ async def crawl_and_summarize(request: CrawlRequest):
         response = client.chat.completions.create(
             model="gpt-4o-mini",
             messages=[
-                {"role": "system", "content": regional_prompt + "\n\nCRITICAL: Your response MUST start with 'Current Drought Conditions:' and include all four sections in this exact order: Current Drought Conditions, Food Security and Production, Water Resources, Food Prices. Each section must start with the exact header followed by a colon."},
+                {"role": "system", "content": regional_prompt + "\n\nCRITICAL INSTRUCTIONS: You MUST provide a structured analysis with EXACTLY these four sections in this exact order:\n\n1. Current Drought Conditions: [Your analysis here]\n2. Water Resources: [Your analysis here]\n3. Impact on food security and Agriculture: [Your analysis here]\n4. Food prices and economic impact: [Your analysis here]\n\nEach section MUST start with the exact header followed by a colon. If information for any section is limited in the provided content, state 'Limited information available' for that section, but DO NOT omit any section."},
                 {"role": "user", "content": f"Please analyze all the following content sources and provide a comprehensive regional analysis:\n\n{combined_content[:20000]}"}
             ],
-            max_tokens=1500,
+            max_tokens=2000,
             temperature=0.3
         )
         
