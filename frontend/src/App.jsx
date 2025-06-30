@@ -762,20 +762,28 @@ function App() {
                 </Col>
                 {results.length > 0 && (
                   <Col span={24}>
-                    <Card size="small">
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <Text>
-                          Recent Results: {results.slice(-3).map(r => r.region).join(', ')}
-                          {results.length > 3 && ` and ${results.length - 3} more`}
-                        </Text>
-                        <Button 
-                          type="link" 
-                          size="small"
-                          onClick={() => setCurrentView('results')}
+                    <Card
+                      title="System Prompt Editor"
+                      style={{ marginBottom: 24 }}
+                      extra={
+                        <Button
+                          type="primary"
+                          loading={systemPromptLoading}
+                          onClick={handleSystemPromptSave}
+                          disabled={systemPromptLoading}
                         >
-                          View All Results →
+                          Save Prompt
                         </Button>
-                      </div>
+                      }
+                    >
+                      <TextArea
+                        rows={8}
+                        value={systemPrompt}
+                        onChange={e => setSystemPrompt(e.target.value)}
+                        placeholder="Edit the core system prompt here. This will be used for all analyses."
+                        style={{ fontFamily: 'monospace' }}
+                        disabled={systemPromptLoading}
+                      />
                     </Card>
                   </Col>
                 )}
