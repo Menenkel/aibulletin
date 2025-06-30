@@ -109,7 +109,7 @@ def extract_text_from_pdf(url: str) -> str:
         session.mount('https://', HTTPAdapter(max_retries=retries))
         session.mount('http://', HTTPAdapter(max_retries=retries))
         print(f"Downloading PDF: {url}")
-        response = session.get(url, timeout=30, stream=True)
+        response = session.get(url, timeout=300, stream=True)
         response.raise_for_status()
         
         # Check if it's actually a PDF
@@ -173,7 +173,7 @@ async def crawl_url(url: str, browser, depth: int = 1, max_depth: int = 2):
     # Regular web page crawling
     page = await browser.new_page()
     try:
-        await page.goto(url, timeout=30000, wait_until='networkidle')
+        await page.goto(url, timeout=300000, wait_until='networkidle')
         
         # Extract clean main content
         main_text = await page.evaluate("""() => {
@@ -378,7 +378,7 @@ async def crawl_and_summarize(request: CrawlRequest):
                         else:
                             # Use simple single-page crawling
                             page = await browser.new_page()
-                            await page.goto(url, wait_until="networkidle", timeout=30000)
+                            await page.goto(url, wait_until="networkidle", timeout=300000)
                             
                             content = await page.evaluate("""
                                 () => {
