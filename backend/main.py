@@ -33,17 +33,7 @@ app = FastAPI()
 # Enable CORS for the frontend
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:5173", 
-        "http://localhost:5174",
-        "http://localhost:3000",
-        "https://localhost:5173",
-        "https://localhost:5174",
-        # Netlify production and preview domains
-        "https://aibulletin-test-deployment.windsurf.build",
-        # Add your production Netlify domain here if you have one, e.g.:
-        # "https://your-app.netlify.app",
-    ],
+    allow_origins=["*"],  # Allow all origins for now to fix connection issues
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
