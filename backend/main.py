@@ -199,6 +199,7 @@ async def crawl_url(url: str, browser, depth: int = 1, max_depth: int = 2):
         # Extract and filter links for recursive crawling
         if depth < max_depth:
             hrefs = await page.eval_on_selector_all("a[href]", "els => els.map(e => e.href)")
+            print(f"Extracted {len(hrefs)} hrefs from {url} at depth {depth}")
             base_domain = urlparse(url).netloc
             
             # Filter links to same domain and valid URLs
