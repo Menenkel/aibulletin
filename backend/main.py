@@ -62,7 +62,7 @@ DEFAULT_SYSTEM_PROMPT = (
 
 class CrawlRequest(BaseModel):
     urls: List[str]
-    custom_prompt: str
+    custom_prompt: str = ""
     region: str = "Global Overview"
     follow_links: bool = True
     max_depth: int = 2
