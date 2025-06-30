@@ -379,43 +379,42 @@ async def crawl_and_summarize(request: CrawlRequest):
                             print(f"Error launching Playwright browser: {e}")
                             all_content.append(f"Source: {url}\nError launching browser: {str(e)}\n\n")
                             continue
+                        
                         try:
-                            page = await browser.new_page()
-                            await page.goto(url, timeout=300000, wait_until='networkidle')
-                            
-                            # Extract main content
-                            main_text = await page.evaluate("""() => {
-                                // Remove unwanted elements
-                                document.querySelectorAll('script, style, nav, header, footer, aside, .ad, .advertisement, .sidebar').forEach(el => el.remove());
+                            # Use the existing crawl_url function for recursive crawling
+                            if request.follow_links:
+                                crawled_content = await crawl_url(url, browser, depth=1, max_depth=request.max_depth)
+                                all_content.append(f"Source: {url}\n{crawled_content[:8000]}\n\n")
+                                total_urls_crawled += 1
+                            else:
+                                # Just crawl the main page without following links
+                                page = await browser.new_page()
+                                await page.goto(url, timeout=300000, wait_until='networkidle')
                                 
-                                // Get main content
-                                const main = document.querySelector('main, article, .content, .post, .entry, .main-content');
-                                if (main) {
-                                    return main.innerText;
-                                }
+                                # Extract main content
+                                main_text = await page.evaluate("""() => {
+                                    // Remove unwanted elements
+                                    document.querySelectorAll('script, style, nav, header, footer, aside, .ad, .advertisement, .sidebar').forEach(el => el.remove());
+                                    
+                                    // Get main content
+                                    const main = document.querySelector('main, article, .content, .post, .entry, .main-content');
+                                    if (main) {
+                                        return main.innerText;
+                                    }
+                                    
+                                    // Fallback to body
+                                    return document.body.innerText;
+                                }""")
                                 
-                                // Fallback to body
-                                return document.body.innerText;
-                            }""")
-                            
-                            # If content is too short, try fallback
-                            if not main_text or len(main_text.strip()) < 100:
-                                content = await page.content()
-                                soup = BeautifulSoup(content, 'html.parser')
-                                main_text = soup.get_text()
-                            
-                            # Add URL source to content for context
-                            all_content.append(f"Source: {url}\n{main_text[:8000]}\n\n")
-                            total_urls_crawled += 1
-                            
-                            # Extract hrefs with robust error handling
-                            try:
-                                hrefs = await page.eval_on_selector_all("a[href]", "els => els.map(e => e.href)")
-                                print(f"Extracted {len(hrefs)} hrefs from {url} at depth 1")
-                            except Exception as e:
-                                print(f"Error extracting hrefs from {url}: {e}")
-                                hrefs = []
-                            # Continue with the rest of the crawling logic as before
+                                # If content is too short, try fallback
+                                if not main_text or len(main_text.strip()) < 100:
+                                    content = await page.content()
+                                    soup = BeautifulSoup(content, 'html.parser')
+                                    main_text = soup.get_text()
+                                
+                                all_content.append(f"Source: {url}\n{main_text[:8000]}\n\n")
+                                total_urls_crawled += 1
+                                await page.close()
                         finally:
                             await browser.close()
                 except Exception as e:
