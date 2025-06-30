@@ -266,46 +266,64 @@ function App() {
       // Start crawling simulation
       simulateCrawling();
       
-      const response = await fetch(getApiEndpoint('crawl-and-summarize'), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          urls: urlList,
-          region: selectedRegion,
-          custom_prompt: customPrompt,
-          follow_links: followLinks,
-          max_depth: maxDepth
-        }),
-        signal: abortController.signal
-      });
+      // Create a timeout controller for long-running requests (15 minutes)
+      const timeoutController = new AbortController();
+      const timeoutId = setTimeout(() => {
+        timeoutController.abort();
+      }, 15 * 60 * 1000); // 15 minutes timeout
       
-      if (response.ok) {
-        const data = await response.json();
+      try {
+        const response = await fetch(getApiEndpoint('crawl-and-summarize'), {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            urls: urlList,
+            region: selectedRegion,
+            custom_prompt: customPrompt,
+            follow_links: followLinks,
+            max_depth: maxDepth
+          }),
+          signal: abortController.signal
+        });
         
-        // Check if cancelled before completing
-        if (abortController.signal.aborted) {
-          throw new Error('Analysis cancelled by user');
+        clearTimeout(timeoutId); // Clear timeout if request completes
+        
+        if (response.ok) {
+          const data = await response.json();
+          
+          // Check if cancelled before completing
+          if (abortController.signal.aborted) {
+            throw new Error('Analysis cancelled by user');
+          }
+          
+          // Simulate analysis completion
+          setTimeout(() => {
+            setProgress(prev => ({
+              ...prev,
+              stage: 'complete',
+              currentUrl: 'Analysis complete! Results ready.'
+            }));
+          }, 3000);
+          
+          setResults(prev => [{
+            region: selectedRegion,
+            urls: urlList,
+            summary: data.analysis,
+            status: 'success',
+            urlsAnalyzed: data.urls_analyzed || urlList.length, // Total URLs including sublinks
+            mainUrlsProcessed: data.main_urls_processed || urlList.length, // Main URLs only
+            followedLinks: data.followed_links || false,
+            timestamp: new Date().toISOString()
+          }, ...prev]);
+        } else {
+          throw new Error(`HTTP error! status: ${response.status}`);
         }
-        
-        // Simulate analysis completion
-        setTimeout(() => {
-          setProgress(prev => ({
-            ...prev,
-            stage: 'complete',
-            currentUrl: 'Analysis complete! Results ready.'
-          }));
-        }, 3000);
-        
-        setResults(prev => [{
-          region: selectedRegion,
-          urls: urlList,
-          summary: data.analysis,
-          status: 'success',
-          urlsAnalyzed: data.urls_analyzed || urlList.length, // Total URLs including sublinks
-          mainUrlsProcessed: data.main_urls_processed || urlList.length, // Main URLs only
-          followedLinks: data.followed_links || false,
-          timestamp: new Date().toISOString()
-        }, ...prev]);
+      } catch (timeoutError) {
+        clearTimeout(timeoutId);
+        if (timeoutError.name === 'AbortError' && timeoutError.message.includes('timeout')) {
+          throw new Error('Request timed out after 15 minutes. The analysis is taking longer than expected.');
+        }
+        throw timeoutError;
       }
     } catch (error) {
       console.error('Error:', error);
@@ -318,6 +336,38 @@ function App() {
         }));
         
         message.info('Analysis cancelled successfully');
+      } else if (error.message.includes('timeout')) {
+        setProgress(prev => ({
+          ...prev,
+          stage: 'error',
+          currentUrl: 'Request timed out - analysis taking too long'
+        }));
+        
+        setResults(prev => [{
+          region: selectedRegion,
+          urls: urlList,
+          summary: 'Analysis timed out after 15 minutes. The comprehensive crawling with link following is taking longer than expected. Try reducing the number of URLs or disabling link following.',
+          status: 'error',
+          timestamp: new Date().toISOString()
+        }, ...prev]);
+        
+        message.error('Analysis timed out. Try reducing URLs or disabling link following.');
+      } else if (error.message.includes('Failed to fetch')) {
+        setProgress(prev => ({
+          ...prev,
+          stage: 'error',
+          currentUrl: 'Network error - cannot connect to backend'
+        }));
+        
+        setResults(prev => [{
+          region: selectedRegion,
+          urls: urlList,
+          summary: 'Network error: Cannot connect to the backend service. Please check your internet connection and try again.',
+          status: 'error',
+          timestamp: new Date().toISOString()
+        }, ...prev]);
+        
+        message.error('Network error. Please check your connection and try again.');
       } else {
         setProgress(prev => ({
           ...prev,
@@ -328,10 +378,12 @@ function App() {
         setResults(prev => [{
           region: selectedRegion,
           urls: urlList,
-          summary: 'Error occurred during analysis',
+          summary: `Error occurred during analysis: ${error.message}`,
           status: 'error',
           timestamp: new Date().toISOString()
         }, ...prev]);
+        
+        message.error('Analysis failed. Please try again.');
       }
     } finally {
       setIsLoading(false);
