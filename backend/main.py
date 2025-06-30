@@ -429,12 +429,17 @@ async def crawl_and_summarize(request: CrawlRequest):
     # Create regional prompt for comprehensive analysis
     regional_prompt = create_regional_prompt(request.region, request.custom_prompt)
     
+    # Get the saved system prompt or use default
+    system_prompt = storage.load_system_prompt()
+    if not system_prompt:
+        system_prompt = DEFAULT_SYSTEM_PROMPT
+    
     try:
         # Get comprehensive summary from OpenAI
         response = client.chat.completions.create(
             model="gpt-4o-mini",
             messages=[
-                {"role": "system", "content": regional_prompt + "\n\nCRITICAL INSTRUCTIONS: You MUST provide a structured analysis with EXACTLY these four sections in this exact order:\n\n1. Current Drought Conditions: [Your analysis here]\n2. Water Resources: [Your analysis here]\n3. Impact on food security and Agriculture: [Your analysis here]\n4. Food prices and economic impact: [Your analysis here]\n\nEach section MUST start with the exact header followed by a colon. If information for any section is limited in the provided content, state 'Limited information available' for that section, but DO NOT omit any section."},
+                {"role": "system", "content": system_prompt},
                 {"role": "user", "content": f"Please analyze all the following content sources and provide a comprehensive regional analysis:\n\n{combined_content[:20000]}"}
             ],
             max_tokens=2000,
