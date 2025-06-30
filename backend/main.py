@@ -175,7 +175,7 @@ async def crawl_url(url: str, browser, depth: int = 1, max_depth: int = 2):
     try:
         await page.goto(url, timeout=300000, wait_until='networkidle')
         
-        # Extract clean main content
+        # Extract main content
         main_text = await page.evaluate("""() => {
             // Remove unwanted elements
             document.querySelectorAll('script, style, nav, header, footer, aside, .ad, .advertisement, .sidebar').forEach(el => el.remove());
@@ -216,7 +216,7 @@ async def crawl_url(url: str, browser, depth: int = 1, max_depth: int = 2):
             print(f"Found {len(sublinks)} sublinks on {url} at depth {depth}")
             
             # Limit number of sublinks to crawl to avoid infinite loops
-            sublinks = sublinks[:5]  # Limit to 5 sublinks per page
+            sublinks = sublinks[:20]  # Limit to 20 sublinks per page
             
             # Recursively crawl sublinks
             sub_content = []
@@ -367,7 +367,7 @@ async def crawl_and_summarize(request: CrawlRequest):
                 # Handle PDF directly
                 print(f"Processing PDF: {url}")
                 pdf_text = extract_text_from_pdf(url)
-                all_content.append(f"Source: {url} (PDF)\n{pdf_text[:4000]}\n\n")
+                all_content.append(f"Source: {url} (PDF)\n{pdf_text[:8000]}\n\n")
                 total_urls_crawled += 1
             else:
                 print(f"Processing web page: {url}")
@@ -382,6 +382,32 @@ async def crawl_and_summarize(request: CrawlRequest):
                         try:
                             page = await browser.new_page()
                             await page.goto(url, timeout=300000, wait_until='networkidle')
+                            
+                            # Extract main content
+                            main_text = await page.evaluate("""() => {
+                                // Remove unwanted elements
+                                document.querySelectorAll('script, style, nav, header, footer, aside, .ad, .advertisement, .sidebar').forEach(el => el.remove());
+                                
+                                // Get main content
+                                const main = document.querySelector('main, article, .content, .post, .entry, .main-content');
+                                if (main) {
+                                    return main.innerText;
+                                }
+                                
+                                // Fallback to body
+                                return document.body.innerText;
+                            }""")
+                            
+                            # If content is too short, try fallback
+                            if not main_text or len(main_text.strip()) < 100:
+                                content = await page.content()
+                                soup = BeautifulSoup(content, 'html.parser')
+                                main_text = soup.get_text()
+                            
+                            # Add URL source to content for context
+                            all_content.append(f"Source: {url}\n{main_text[:8000]}\n\n")
+                            total_urls_crawled += 1
+                            
                             # Extract hrefs with robust error handling
                             try:
                                 hrefs = await page.eval_on_selector_all("a[href]", "els => els.map(e => e.href)")
@@ -396,9 +422,6 @@ async def crawl_and_summarize(request: CrawlRequest):
                     print(f"Error with Playwright for {url}: {e}")
                     all_content.append(f"Source: {url}\nError with Playwright: {str(e)}\n\n")
                     continue
-            
-            # Add URL source to content for context
-            all_content.append(f"Source: {url}\n{content[:4000]}\n\n")
             
         except Exception as e:
             all_content.append(f"Source: {url}\nError processing URL: {str(e)}\n\n")
@@ -416,7 +439,7 @@ async def crawl_and_summarize(request: CrawlRequest):
             model="gpt-4o-mini",
             messages=[
                 {"role": "system", "content": regional_prompt + "\n\nCRITICAL: Your response MUST start with 'Current Drought Conditions:' and include all four sections in this exact order: Current Drought Conditions, Food Security and Production, Water Resources, Food Prices. Each section must start with the exact header followed by a colon."},
-                {"role": "user", "content": f"Please analyze all the following content sources and provide a comprehensive regional analysis:\n\n{combined_content[:12000]}"}
+                {"role": "user", "content": f"Please analyze all the following content sources and provide a comprehensive regional analysis:\n\n{combined_content[:20000]}"}
             ],
             max_tokens=1500,
             temperature=0.3
