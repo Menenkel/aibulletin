@@ -79,6 +79,7 @@ function App() {
   const [pdfSupport, setPdfSupport] = useState(false);
   const [savedSources, setSavedSources] = useState([]);
   const [currentView, setCurrentView] = useState('analysis');
+  const [customPrompt, setCustomPrompt] = useState("");
   
   // Progress tracking states
   const [progress, setProgress] = useState({
@@ -271,7 +272,7 @@ function App() {
         body: JSON.stringify({
           urls: urlList,
           region: selectedRegion,
-          custom_prompt: "",
+          custom_prompt: customPrompt,
           follow_links: followLinks,
           max_depth: maxDepth
         }),
@@ -920,6 +921,28 @@ function App() {
                         onChange={(e) => setUrls(e.target.value)}
                         style={{ marginTop: 8 }}
                       />
+                    </div>
+                  </Col>
+                  
+                  <Col xs={24}>
+                    <div>
+                      <Text strong>Custom Prompt</Text>
+                      <TextArea
+                        rows={6}
+                        placeholder="Enter a custom prompt for the AI analysis..."
+                        value={customPrompt}
+                        onChange={(e) => setCustomPrompt(e.target.value)}
+                        style={{ marginTop: 8 }}
+                      />
+                      <Text type="secondary" style={{ display: 'block', marginTop: 4 }}>
+                        Default: You're a drought analyst. Analyze the provided URLs and create a comprehensive drought-focused summary for the selected region. Generate the headlines before summarizing the content. Include up to two paragraphs for the following topics and headlines:
+                        <br />
+                        1. Current Drought Conditions: Assess the severity and extent of drought in the region<br />
+                        2. Water Resources: Status of surface water, groundwater, and reservoir levels<br />
+                        3. Impact on food security and Agriculture: Effects on crops and livestock<br />
+                        4. Food prices and economic impact<br />
+                        Strictly use all headlines based on these four categories and separate the sections with breaks. Ensure that the text describes current conditions without phrases such as "the report highlights". Simply summarize conditions from the URLs or PDFs provided. Use no external information.
+                      </Text>
                     </div>
                   </Col>
                   
