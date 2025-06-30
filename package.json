@@ -8,11 +8,11 @@
     "start": "cd frontend && npm run preview"
   },
   "dependencies": {
-    "openai": "^4.28.0",
     "axios": "^1.6.0",
     "cheerio": "^1.0.0-rc.12",
-    "puppeteer": "^24.0.0",
-    "pdf-parse": "^1.1.1"
+    "openai": "^4.104.0",
+    "pdf-parse": "^1.1.1",
+    "puppeteer": "^24.0.0"
   },
   "engines": {
     "node": "18.x"
@@ -21,7 +21,12 @@
     "type": "git",
     "url": "https://github.com/yourusername/drought-bulletin-webcrawler.git"
   },
-  "keywords": ["drought", "webcrawler", "react", "fastapi"],
+  "keywords": [
+    "drought",
+    "webcrawler",
+    "react",
+    "fastapi"
+  ],
   "author": "Your Name",
   "license": "MIT"
 }

@@ -67,9 +67,13 @@ async function extractTextFromPdf(url) {
   }
 }
 
-async function crawlUrl(url, browser, depth = 1, maxDepth = 2, visitedUrls = new Set()) {
+async function crawlUrl(url, browser, depth = 1, maxDepth = 2, visitedUrls = new Set(), startTime = null, maxElapsedMs = 8000) {
+  if (!startTime) startTime = Date.now();
   if (visitedUrls.has(url) || depth > maxDepth) {
     return "";
+  }
+  if (Date.now() - startTime > maxElapsedMs) {
+    return "[Crawl stopped early due to Netlify timeout limit. Partial results only.]";
   }
   
   visitedUrls.add(url);
@@ -87,65 +91,30 @@ async function crawlUrl(url, browser, depth = 1, maxDepth = 2, visitedUrls = new
   try {
     await page.goto(url, { timeout: 30000, waitUntil: 'networkidle' });
     
-    // Extract clean main content using cheerio for better parsing
+    // Extract main text
     const mainText = await page.evaluate(() => {
-      // Remove unwanted elements
-      document.querySelectorAll('script, style, nav, header, footer, aside, .ad, .advertisement, .sidebar').forEach(el => el.remove());
-      
-      // Get main content
-      const main = document.querySelector('main, article, .content, .post, .entry, .main-content');
+      const scripts = document.querySelectorAll('script, style, nav, header, footer, .ad, .advertisement');
+      scripts.forEach(el => el.remove());
+      const main = document.querySelector('main, article, .content, .post, .entry');
       if (main) {
         return main.innerText;
       }
-      
-      // Fallback to body
       return document.body.innerText;
     });
     
-    // If content is too short, try fallback with better text extraction
-    if (!mainText || mainText.trim().length < 100) {
-      const content = await page.content();
-      const $ = cheerio.load(content);
-      
-      // Remove unwanted elements
-      $('script, style, nav, header, footer, aside, .ad, .advertisement, .sidebar').remove();
-      
-      // Get text content
-      const textContent = $.text().replace(/\s+/g, ' ').trim();
-      return textContent;
-    }
+    // Find sublinks
+    const sublinks = await page.evaluate(() => {
+      const anchors = Array.from(document.querySelectorAll('a[href]'));
+      return anchors.map(a => a.href).filter(href => href.startsWith('http'));
+    });
     
-    // Extract and filter links for recursive crawling
-    if (depth < maxDepth) {
-      const hrefs = await page.evaluate(() => {
-        return Array.from(document.querySelectorAll('a[href]')).map(a => a.href);
-      });
-      
-      const baseDomain = new URL(url).hostname;
-      
-      // Filter links to same domain and valid URLs
-      const sublinks = hrefs.filter(href => {
-        try {
-          const parsed = new URL(href);
-          return parsed.hostname === baseDomain && !visitedUrls.has(href);
-        } catch {
-          return false;
-        }
-      });
-      
-      // Crawl sublinks (limit to prevent excessive crawling)
-      const sublinkPromises = sublinks.slice(0, 5).map(href => 
-        crawlUrl(href, browser, depth + 1, maxDepth, visitedUrls)
-      );
-      
-      const sublinkContents = await Promise.all(sublinkPromises);
-      const sublinkText = sublinkContents.filter(content => content).join('\n\n');
-      
-      return mainText + (sublinkText ? `\n\nAdditional content from linked pages:\n${sublinkText}` : '');
-    }
-    
-    return mainText;
-    
+    // Limit to 2 sublinks
+    sublinks = sublinks.slice(0, 2);
+    const sublinkContents = await Promise.all(
+      sublinks.map(href => crawlUrl(href, browser, depth + 1, maxDepth, visitedUrls, startTime, maxElapsedMs))
+    );
+    const sublinkText = sublinkContents.filter(content => content).join('\n\n');
+    return mainText + (sublinkText ? `\n\nAdditional content from linked pages:\n${sublinkText}` : '');
   } catch (error) {
     console.error(`Error crawling ${url}:`, error.message);
     return `Error processing ${url}: ${error.message}`;
@@ -176,15 +145,35 @@ exports.handler = async (event, context) => {
       };
     }
 
-    // Check if API key is configured
-    if (!process.env.OPENAI_API_KEY) {
-      console.error('OpenAI API key not configured');
+    // Extract API key
+    const body = JSON.parse(event.body);
+    const api_key = body.api_key || process.env.OPENAI_API_KEY;
+
+    // Development mode: mock analysis if 'story' is used as API key
+    if (api_key === 'story') {
+      await new Promise(r => setTimeout(r, 3000)); // Simulate processing
       return {
-        statusCode: 500,
+        statusCode: 200,
         headers,
-        body: JSON.stringify({ error: 'OpenAI API key not configured' })
+        body: JSON.stringify({
+          analysis: "This is a mock analysis for development purposes because the 'story' API key was used. This mode allows testing the application flow without making real calls to the OpenAI API.\n\n1. Current Drought Conditions: Mock assessment of severe drought.\n2. Water Resources: Mock status of low water levels.\n3. Impact on Agriculture: Mock effects on crops.\n4. Economic Impact: Mock summary of economic consequences.",
+          urls_analyzed: body.urls ? body.urls.length : 0,
+          followed_links: body.follow_links,
+          pdf_support: true,
+          region: body.region || 'Global Overview',
+          timestamp: new Date().toISOString()
+        })
       };
     }
+
+    // Validate API key
+    if (!api_key) {
+      return {
+        statusCode: 400,
+        headers,
+        body: JSON.stringify({ error: 'API key not set' })
+      };
+    };
 
     let requestBody;
     try {
@@ -299,6 +288,11 @@ exports.handler = async (event, context) => {
     // Create regional prompt for comprehensive analysis
     const regionalPrompt = createRegionalPrompt(region, custom_prompt);
 
+    let crawlWarning = '';
+    if (combinedContent.includes('[Crawl stopped early due to Netlify timeout limit.')) {
+      crawlWarning = 'WARNING: Crawl was incomplete due to Netlify function timeout. Only partial content was analyzed.';
+    }
+
     console.log('Sending request to OpenAI...');
 
     // Call OpenAI API with comprehensive analysis matching local backend
@@ -318,7 +312,10 @@ exports.handler = async (event, context) => {
       temperature: 0.3
     });
 
-    const analysis = completion.choices[0].message.content;
+    let analysis = completion.choices[0].message.content;
+    if (crawlWarning) {
+      analysis = crawlWarning + '\n\n' + analysis;
+    }
 
     console.log('Analysis completed successfully');
 
@@ -331,7 +328,8 @@ exports.handler = async (event, context) => {
         followed_links: follow_links,
         pdf_support: true,
         region: region || 'Global Overview',
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
+        crawl_warning: crawlWarning || undefined
       })
     };
 

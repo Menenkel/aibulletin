@@ -33,19 +33,7 @@ app = FastAPI()
 # Enable CORS for the frontend
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:5173", 
-        "http://localhost:5174",
-        "http://localhost:3000",
-        "https://localhost:5173",
-        "https://localhost:5174",
-        # Add your production domains here
-        "https://your-app.netlify.app",
-        "https://your-app.vercel.app",
-        "https://your-app.render.com",
-        # Allow all origins for development (remove in production)
-        "*"
-    ],
+    allow_origins=["*"],  # Allow all origins for now to fix connection issues
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -74,7 +62,7 @@ DEFAULT_SYSTEM_PROMPT = (
 
 class CrawlRequest(BaseModel):
     urls: List[str]
-    custom_prompt: str
+    custom_prompt: str = ""
     region: str = "Global Overview"
     follow_links: bool = True
     max_depth: int = 2
@@ -111,7 +99,7 @@ def extract_text_from_pdf(url: str) -> str:
         session.mount('https://', HTTPAdapter(max_retries=retries))
         session.mount('http://', HTTPAdapter(max_retries=retries))
         print(f"Downloading PDF: {url}")
-        response = session.get(url, timeout=30, stream=True)
+        response = session.get(url, timeout=300, stream=True)
         response.raise_for_status()
         
         # Check if it's actually a PDF
@@ -175,9 +163,9 @@ async def crawl_url(url: str, browser, depth: int = 1, max_depth: int = 2):
     # Regular web page crawling
     page = await browser.new_page()
     try:
-        await page.goto(url, timeout=30000, wait_until='networkidle')
+        await page.goto(url, timeout=300000, wait_until='networkidle')
         
-        # Extract clean main content
+        # Extract main content
         main_text = await page.evaluate("""() => {
             // Remove unwanted elements
             document.querySelectorAll('script, style, nav, header, footer, aside, .ad, .advertisement, .sidebar').forEach(el => el.remove());
@@ -201,6 +189,7 @@ async def crawl_url(url: str, browser, depth: int = 1, max_depth: int = 2):
         # Extract and filter links for recursive crawling
         if depth < max_depth:
             hrefs = await page.eval_on_selector_all("a[href]", "els => els.map(e => e.href)")
+            print(f"Extracted {len(hrefs)} hrefs from {url} at depth {depth}")
             base_domain = urlparse(url).netloc
             
             # Filter links to same domain and valid URLs
@@ -208,13 +197,16 @@ async def crawl_url(url: str, browser, depth: int = 1, max_depth: int = 2):
             for href in hrefs:
                 try:
                     parsed = urlparse(href)
-                    if parsed.netloc == base_domain and href not in visited_urls:
+                    # TEMP: Relax domain filter for debugging
+                    if href not in visited_urls:
                         sublinks.append(href)
-                except:
+                except Exception as e:
+                    print(f"Error parsing href {href}: {e}")
                     continue
+            print(f"Found {len(sublinks)} sublinks on {url} at depth {depth}")
             
             # Limit number of sublinks to crawl to avoid infinite loops
-            sublinks = sublinks[:5]  # Limit to 5 sublinks per page
+            sublinks = sublinks[:20]  # Limit to 20 sublinks per page
             
             # Recursively crawl sublinks
             sub_content = []
@@ -239,19 +231,15 @@ async def startup_event():
     """Load saved API key on startup."""
     global api_key, client
     
-    # First try to load from environment variable (for production)
-    env_api_key = os.getenv("OPENAI_API_KEY")
-    if env_api_key:
-        api_key = env_api_key
+    # Prioritize environment variable for API key, fallback to storage
+    loaded_key = os.getenv("OPENAI_API_KEY") or storage.load_api_key()
+    if loaded_key:
+        api_key = loaded_key
         client = OpenAI(api_key=api_key)
-        print("Loaded API key from environment variable")
-    else:
-        # Fall back to saved API key from storage
-        saved_api_key = storage.load_api_key()
-        if saved_api_key:
-            api_key = saved_api_key
-            client = OpenAI(api_key=api_key)
-            print("Loaded saved API key from storage")
+        if os.getenv("OPENAI_API_KEY"):
+            print("Loaded API key from environment variable")
+        else:
+            print("Loaded API key from storage")
     
     # Print PDF support status
     if PDF_SUPPORT:
@@ -263,20 +251,25 @@ async def startup_event():
 async def set_api_key(request: ApiKeyRequest):
     global api_key, client
     
+    # Special handling for 'story' API key for local development
+    if request.api_key == "story":
+        api_key = "story"
+        client = OpenAI(api_key=api_key)  # Will not be used for real calls
+        storage.save_api_key(api_key)
+        print("Using special 'story' API key for development.")
+        return ApiKeyResponse(status="success", message="API key set successfully (development mode)")
+
     try:
-        # Test the API key
+        # Test the API key for any other value
         test_client = OpenAI(api_key=request.api_key)
-        response = test_client.chat.completions.create(
+        test_client.chat.completions.create(
             model="gpt-4o-mini",
             messages=[{"role": "user", "content": "Hello"}],
-            max_tokens=5
+            max_tokens=5,
         )
         
-        # If we get here, the API key is valid
         api_key = request.api_key
         client = OpenAI(api_key=api_key)
-        
-        # Save to persistent storage
         storage.save_api_key(api_key)
         
         return ApiKeyResponse(status="success", message="API key set successfully")
@@ -327,6 +320,23 @@ async def crawl_and_summarize(request: CrawlRequest):
     
     if not api_key:
         raise HTTPException(status_code=400, detail="API key not set")
+
+    # Development mode with 'story' key
+    if api_key == "story":
+        print("Running in development mode with 'story' API key. Returning mock data.")
+        await asyncio.sleep(3)  # Simulate processing time
+        return {
+            "analysis": (
+                "This is a mock analysis for development purposes because the 'story' API key was used. "
+                "This mode allows testing the application flow without making real calls to the OpenAI API.\n\n"
+                "1. Current Drought Conditions: Mock assessment of severe drought.\n"
+                "2. Water Resources: Mock status of low water levels.\n"
+                "3. Impact on Agriculture: Mock effects on crops.\n"
+                "4. Economic Impact: Mock summary of economic consequences."
+            ),
+            "urls_analyzed": len(request.urls),
+            "followed_links": request.follow_links,
+        }
     
     if not request.urls:
         raise HTTPException(status_code=400, detail="No URLs provided")
@@ -339,6 +349,7 @@ async def crawl_and_summarize(request: CrawlRequest):
     
     all_content = []
     total_urls_crawled = 0
+    total_urls_visited = 0  # Track all URLs including sublinks
     
     # Process URLs - handle PDFs separately from web pages
     for url in request.urls:
@@ -347,51 +358,67 @@ async def crawl_and_summarize(request: CrawlRequest):
                 # Handle PDF directly
                 print(f"Processing PDF: {url}")
                 pdf_text = extract_text_from_pdf(url)
-                all_content.append(f"Source: {url} (PDF)\n{pdf_text[:4000]}\n\n")
+                all_content.append(f"Source: {url} (PDF)\n{pdf_text[:8000]}\n\n")
                 total_urls_crawled += 1
+                total_urls_visited += 1
             else:
-                # Handle web pages with Playwright
-                async with async_playwright() as p:
-                    browser = await p.chromium.launch(headless=True)
-                    
-                    try:
-                        if request.follow_links:
-                            # Use recursive crawling
-                            content = await crawl_url(url, browser, depth=1, max_depth=request.max_depth)
-                            total_urls_crawled += len(visited_urls)
-                        else:
-                            # Use simple single-page crawling
-                            page = await browser.new_page()
-                            await page.goto(url, wait_until="networkidle", timeout=30000)
-                            
-                            content = await page.evaluate("""
-                                () => {
-                                    const scripts = document.querySelectorAll('script, style, nav, header, footer, .ad, .advertisement');
-                                    scripts.forEach(el => el.remove());
+                print(f"Processing web page: {url}")
+                try:
+                    async with async_playwright() as p:
+                        try:
+                            browser = await p.chromium.launch(headless=True)
+                        except Exception as e:
+                            print(f"Error launching Playwright browser: {e}")
+                            all_content.append(f"Source: {url}\nError launching browser: {str(e)}\n\n")
+                            continue
+                        
+                        try:
+                            # Use the existing crawl_url function for recursive crawling
+                            if request.follow_links:
+                                # Reset visited_urls count for this URL to track sublinks
+                                initial_visited_count = len(visited_urls)
+                                crawled_content = await crawl_url(url, browser, depth=1, max_depth=request.max_depth)
+                                all_content.append(f"Source: {url}\n{crawled_content[:8000]}\n\n")
+                                total_urls_crawled += 1
+                                # Count all URLs visited including sublinks
+                                total_urls_visited += len(visited_urls) - initial_visited_count + 1
+                            else:
+                                # Just crawl the main page without following links
+                                page = await browser.new_page()
+                                await page.goto(url, timeout=300000, wait_until='networkidle')
+                                
+                                # Extract main content
+                                main_text = await page.evaluate("""() => {
+                                    // Remove unwanted elements
+                                    document.querySelectorAll('script, style, nav, header, footer, aside, .ad, .advertisement, .sidebar').forEach(el => el.remove());
                                     
-                                    const main = document.querySelector('main, article, .content, .post, .entry');
+                                    // Get main content
+                                    const main = document.querySelector('main, article, .content, .post, .entry, .main-content');
                                     if (main) {
                                         return main.innerText;
                                     }
                                     
+                                    // Fallback to body
                                     return document.body.innerText;
-                                }
-                            """)
-                            
-                            if not content or len(content.strip()) < 100:
-                                content = await page.content()
-                                soup = BeautifulSoup(content, 'html.parser')
-                                content = soup.get_text()
-                            
-                            await page.close()
-                            total_urls_crawled += 1
-                        
-                        # Add URL source to content for context
-                        all_content.append(f"Source: {url}\n{content[:4000]}\n\n")
-                        
-                    finally:
-                        await browser.close()
-                        
+                                }""")
+                                
+                                # If content is too short, try fallback
+                                if not main_text or len(main_text.strip()) < 100:
+                                    content = await page.content()
+                                    soup = BeautifulSoup(content, 'html.parser')
+                                    main_text = soup.get_text()
+                                
+                                all_content.append(f"Source: {url}\n{main_text[:8000]}\n\n")
+                                total_urls_crawled += 1
+                                total_urls_visited += 1
+                                await page.close()
+                        finally:
+                            await browser.close()
+                except Exception as e:
+                    print(f"Error with Playwright for {url}: {e}")
+                    all_content.append(f"Source: {url}\nError with Playwright: {str(e)}\n\n")
+                    continue
+            
         except Exception as e:
             all_content.append(f"Source: {url}\nError processing URL: {str(e)}\n\n")
             total_urls_crawled += 1
@@ -402,15 +429,20 @@ async def crawl_and_summarize(request: CrawlRequest):
     # Create regional prompt for comprehensive analysis
     regional_prompt = create_regional_prompt(request.region, request.custom_prompt)
     
+    # Get the saved system prompt or use default
+    system_prompt = storage.load_system_prompt()
+    if not system_prompt:
+        system_prompt = DEFAULT_SYSTEM_PROMPT
+    
     try:
         # Get comprehensive summary from OpenAI
         response = client.chat.completions.create(
             model="gpt-4o-mini",
             messages=[
-                {"role": "system", "content": regional_prompt + "\n\nCRITICAL: Your response MUST start with 'Current Drought Conditions:' and include all four sections in this exact order: Current Drought Conditions, Food Security and Production, Water Resources, Food Prices. Each section must start with the exact header followed by a colon."},
-                {"role": "user", "content": f"Please analyze all the following content sources and provide a comprehensive regional analysis:\n\n{combined_content[:12000]}"}
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": f"Please analyze all the following content sources and provide a comprehensive regional analysis:\n\n{combined_content[:20000]}"}
             ],
-            max_tokens=1500,
+            max_tokens=4000,
             temperature=0.3
         )
         
@@ -418,7 +450,8 @@ async def crawl_and_summarize(request: CrawlRequest):
         
         return {
             "analysis": summary,
-            "urls_analyzed": total_urls_crawled,
+            "urls_analyzed": total_urls_visited,  # Return total URLs including sublinks
+            "main_urls_processed": total_urls_crawled,  # Return main URLs processed
             "followed_links": request.follow_links,
             "pdf_support": PDF_SUPPORT
         }
@@ -441,4 +474,7 @@ async def root():
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000) 
+    import os
+    port = int(os.environ.get("PORT", 8000))
+    print(f"Starting Uvicorn on port {port}")
+    uvicorn.run(app, host="0.0.0.0", port=port) 

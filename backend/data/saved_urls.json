@@ -1,92 +1,6 @@
 [
   {
     "urls": [
-      "https://www.cropmonitor.org/global-crop-monitor"
-    ],
-    "region": "Global Overview",
-    "custom_prompt": "",
-    "timestamp": "2025-06-28T21:26:34.541090"
-  },
-  {
-    "urls": [
-      "https://www.cropmonitor.org/global-crop-monitor ",
-      "https://fews.net/sites/default/files/2025-06/FEWS_NET_Global_Food_Security_Update_06232025.pdf",
-      "https://www.aljazeera.com/tag/drought/",
-      "https://www.ncei.noaa.gov/access/monitoring/monthly-report/global-drought/202503 https://www.cropmonitor.org/global-crop-monitor ",
-      "https://www.worldbank.org/en/topic/agriculture/brief/food-security-update ",
-      "https://www.fao.org/worldfoodsituation/foodpricesindex/en/ https://www.fao.org/worldfoodsituation/csdb/en ",
-      "https://joint-research-centre.ec.europa.eu/european-and-global-drought-observatories/current-drought-situation-europe_en ",
-      "https://reliefweb.int/disasters?list=Drought%20Disasters&advanced-search=%28TY4672%29"
-    ],
-    "region": "Global Overview",
-    "custom_prompt": "",
-    "timestamp": "2025-06-28T21:30:10.295344"
-  },
-  {
-    "urls": [
-      "https://www.cropmonitor.org/global-crop-monitor ",
-      "https://fews.net/sites/default/files/2025-06/FEWS_NET_Global_Food_Security_Update_06232025.pdf",
-      "https://www.aljazeera.com/tag/drought/",
-      "https://www.ncei.noaa.gov/access/monitoring/monthly-report/global-drought/202503 https://www.cropmonitor.org/global-crop-monitor ",
-      "https://www.worldbank.org/en/topic/agriculture/brief/food-security-update ",
-      "https://www.fao.org/worldfoodsituation/foodpricesindex/en/ https://www.fao.org/worldfoodsituation/csdb/en ",
-      "https://joint-research-centre.ec.europa.eu/european-and-global-drought-observatories/current-drought-situation-europe_en ",
-      "https://reliefweb.int/disasters?list=Drought%20Disasters&advanced-search=%28TY4672%29"
-    ],
-    "region": "Global Overview",
-    "custom_prompt": "",
-    "timestamp": "2025-06-28T21:32:24.155484"
-  },
-  {
-    "urls": [
-      "https://www.cropmonitor.org/global-crop-monitor",
-      "https://fews.net/sites/default/files/2025-06/FEWS_NET_Global_Food_Security_Update_06232025.pdf",
-      "https://www.aljazeera.com/tag/drought/",
-      "https://www.ncei.noaa.gov/access/monitoring/monthly-report/global-drought/202503",
-      "https://www.worldbank.org/en/topic/agriculture/brief/food-security-update",
-      "https://www.fao.org/worldfoodsituation/foodpricesindex/en/",
-      "https://www.fao.org/worldfoodsituation/csdb/en",
-      "https://joint-research-centre.ec.europa.eu/european-and-global-drought-observatories/current-drought-situation-europe_en",
-      "https://reliefweb.int/disasters?list=Drought%20Disasters&advanced-search=%28TY4672%29"
-    ],
-    "region": "Global Overview",
-    "custom_prompt": "",
-    "timestamp": "2025-06-28T21:36:07.798128"
-  },
-  {
-    "urls": [
-      "https://www.cropmonitor.org/global-crop-monitor",
-      "https://fews.net/sites/default/files/2025-06/FEWS_NET_Global_Food_Security_Update_06232025.pdf",
-      "https://www.aljazeera.com/tag/drought/",
-      "https://www.ncei.noaa.gov/access/monitoring/monthly-report/global-drought/202503",
-      "https://www.worldbank.org/en/topic/agriculture/brief/food-security-update",
-      "https://www.fao.org/worldfoodsituation/foodpricesindex/en/",
-      "https://www.fao.org/worldfoodsituation/csdb/en",
-      "https://joint-research-centre.ec.europa.eu/european-and-global-drought-observatories/current-drought-situation-europe_en",
-      "https://reliefweb.int/disasters?list=Drought%20Disasters&advanced-search=%28TY4672%29"
-    ],
-    "region": "East Asia & Pacific",
-    "custom_prompt": "",
-    "timestamp": "2025-06-28T21:37:57.043745"
-  },
-  {
-    "urls": [
-      "https://www.cropmonitor.org/global-crop-monitor",
-      "https://fews.net/sites/default/files/2025-06/FEWS_NET_Global_Food_Security_Update_06232025.pdf",
-      "https://www.aljazeera.com/tag/drought/",
-      "https://www.ncei.noaa.gov/access/monitoring/monthly-report/global-drought/202503",
-      "https://www.worldbank.org/en/topic/agriculture/brief/food-security-update",
-      "https://www.fao.org/worldfoodsituation/foodpricesindex/en/",
-      "https://www.fao.org/worldfoodsituation/csdb/en",
-      "https://joint-research-centre.ec.europa.eu/european-and-global-drought-observatories/current-drought-situation-europe_en",
-      "https://reliefweb.int/disasters?list=Drought%20Disasters&advanced-search=%28TY4672%29"
-    ],
-    "region": "East Asia & Pacific",
-    "custom_prompt": "",
-    "timestamp": "2025-06-28T21:39:05.795911"
-  },
-  {
-    "urls": [
       "https://www.cropmonitor.org/global-crop-monitor",
       "https://fews.net/sites/default/files/2025-06/FEWS_NET_Global_Food_Security_Update_06232025.pdf",
       "https://www.aljazeera.com/tag/drought/",
@@ -132,5 +46,74 @@
     "region": "Latin America & Caribbean",
     "custom_prompt": "",
     "timestamp": "2025-06-28T21:52:48.282560"
+  },
+  {
+    "urls": [
+      "https://www.cropmonitor.org/global-crop-monitor ",
+      "https://fews.net/sites/default/files/2025-06/FEWS_NET_Global_Food_Security_Update_06232025.pdf",
+      "https://www.aljazeera.com/tag/drought/",
+      "https://www.ncei.noaa.gov/access/monitoring/monthly-report/global-drought/202503 https://www.cropmonitor.org/global-crop-monitor ",
+      "https://www.worldbank.org/en/topic/agriculture/brief/food-security-update ",
+      "https://www.fao.org/worldfoodsituation/foodpricesindex/en/ https://www.fao.org/worldfoodsituation/csdb/en ",
+      "https://joint-research-centre.ec.europa.eu/european-and-global-drought-observatories/current-drought-situation-europe_en ",
+      "https://reliefweb.int/disasters?list=Drought%20Disasters&advanced-search=%28TY4672%29"
+    ],
+    "region": "Sub-Saharan Africa",
+    "custom_prompt": "",
+    "timestamp": "2025-06-29T17:49:08.407947"
+  },
+  {
+    "urls": [
+      "https://www.cropmonitor.org/global-crop-monitor ",
+      "https://fews.net/sites/default/files/2025-06/FEWS_NET_Global_Food_Security_Update_06232025.pdf",
+      "https://www.aljazeera.com/tag/drought/",
+      "https://www.ncei.noaa.gov/access/monitoring/monthly-report/global-drought/202503 https://www.cropmonitor.org/global-crop-monitor ",
+      "https://www.worldbank.org/en/topic/agriculture/brief/food-security-update ",
+      "https://www.fao.org/worldfoodsituation/foodpricesindex/en/ https://www.fao.org/worldfoodsituation/csdb/en ",
+      "https://joint-research-centre.ec.europa.eu/european-and-global-drought-observatories/current-drought-situation-europe_en ",
+      "https://reliefweb.int/disasters?list=Drought%20Disasters&advanced-search=%28TY4672%29"
+    ],
+    "region": "Sub-Saharan Africa",
+    "custom_prompt": "",
+    "timestamp": "2025-06-29T17:49:13.393322"
+  },
+  {
+    "urls": [
+      "https://www.cropmonitor.org/global-crop-monitor ",
+      "https://fews.net/sites/default/files/2025-06/FEWS_NET_Global_Food_Security_Update_06232025.pdf",
+      "https://www.aljazeera.com/tag/drought/",
+      "https://www.ncei.noaa.gov/access/monitoring/monthly-report/global-drought/202503 https://www.cropmonitor.org/global-crop-monitor ",
+      "https://www.worldbank.org/en/topic/agriculture/brief/food-security-update ",
+      "https://www.fao.org/worldfoodsituation/foodpricesindex/en/ https://www.fao.org/worldfoodsituation/csdb/en ",
+      "https://joint-research-centre.ec.europa.eu/european-and-global-drought-observatories/current-drought-situation-europe_en ",
+      "https://reliefweb.int/disasters?list=Drought%20Disasters&advanced-search=%28TY4672%29"
+    ],
+    "region": "Sub-Saharan Africa",
+    "custom_prompt": "",
+    "timestamp": "2025-06-29T17:51:00.115417"
+  },
+  {
+    "urls": [
+      "https://fews.net/sites/default/files/2025-06/FEWS_NET_Global_Food_Security_Update_06232025.pdf"
+    ],
+    "region": "Sub-Saharan Africa",
+    "custom_prompt": "",
+    "timestamp": "2025-06-29T17:56:22.436684"
+  },
+  {
+    "urls": [
+      "https://www.cropmonitor.org/global-crop-monitor "
+    ],
+    "region": "Sub-Saharan Africa",
+    "custom_prompt": "",
+    "timestamp": "2025-06-29T18:11:07.322504"
+  },
+  {
+    "urls": [
+      "https://static1.squarespace.com/static/636c12f7f9c2561de642a866/t/6841c3bdf625a76232357f34/1749140414725/Global_CropMonitor_202506.pdf"
+    ],
+    "region": "Sub-Saharan Africa",
+    "custom_prompt": "",
+    "timestamp": "2025-06-29T18:12:59.331432"
   }
 ]

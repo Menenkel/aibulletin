@@ -13,13 +13,38 @@ exports.handler = async (event, context) => {
     const body = JSON.parse(event.body);
     const { api_key } = body;
     
-    // In a real app, you'd store this securely
-    // For now, we'll just return success
-    return {
-      statusCode: 200,
-      headers,
-      body: JSON.stringify({ success: true }),
-    };
+    // Special handling for 'story' dev API key
+    if (api_key === 'story') {
+      return {
+        statusCode: 200,
+        headers,
+        body: JSON.stringify({ status: 'success', message: 'API key set successfully (development mode)' })
+      };
+    }
+
+    // Validate real OpenAI API key
+    const { OpenAI } = require('openai');
+    try {
+      const client = new OpenAI({ apiKey: api_key });
+      // Make a test call
+      await client.chat.completions.create({
+        model: 'gpt-4o-mini',
+        messages: [{ role: 'user', content: 'Hello' }],
+        max_tokens: 5
+      });
+      // Optionally, you can persist the key in a secure store or env
+      return {
+        statusCode: 200,
+        headers,
+        body: JSON.stringify({ status: 'success', message: 'API key set successfully' })
+      };
+    } catch (e) {
+      return {
+        statusCode: 400,
+        headers,
+        body: JSON.stringify({ status: 'error', message: 'Invalid API key: ' + e.message })
+      };
+    }
   }
 
   if (event.httpMethod === 'GET') {

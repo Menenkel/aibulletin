@@ -55,23 +55,17 @@ const { Step } = Steps;
 // API configuration
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
 
-// Check if we're in production (Netlify)
-const isProduction = window.location.hostname !== 'localhost';
-
-// Use different endpoints for production vs development
 const getApiEndpoint = (endpoint) => {
-  if (isProduction) {
-    return `/.netlify/functions/${endpoint}`;
+  // Always use the API_BASE_URL if set, otherwise fallback to Netlify Functions (for legacy/dev)
+  if (API_BASE_URL && !API_BASE_URL.includes('localhost')) {
+    return `${API_BASE_URL.replace(/\/$/, '')}/${endpoint}`;
   }
-  return `${API_BASE_URL}/${endpoint}`;
+  // fallback for local dev or if env var is missing
+  return `/.netlify/functions/${endpoint}`;
 };
 
 // Updated with dark mode toggle and background animation
 function App() {
-  const [apiKey, setApiKey] = useState("");
-  const [apiKeyStatus, setApiKeyStatus] = useState("not_set");
-  const [apiKeyConfigured, setApiKeyConfigured] = useState(false);
-  const [apiKeyLoading, setApiKeyLoading] = useState(false);
   const [selectedRegion, setSelectedRegion] = useState("");
   const [urls, setUrls] = useState("");
   const [systemPrompt, setSystemPrompt] = useState("");
@@ -131,12 +125,6 @@ function App() {
       })
       .catch((err) => console.error("Error loading regions:", err));
 
-    // Check API key status
-    fetch(getApiEndpoint('api-key/status'))
-      .then((res) => res.json())
-      .then((data) => setApiKeyStatus(data.has_api_key ? "set" : "not_set"))
-      .catch((err) => console.error("Error checking API key status:", err));
-
     // Load saved URLs
     fetch(getApiEndpoint('saved-urls'))
       .then((res) => res.json())
@@ -162,7 +150,6 @@ function App() {
       .then((res) => res.json())
       .then((data) => {
         setPdfSupport(data.pdf_support);
-        setApiKeyConfigured(data.api_key_configured);
       })
       .catch((err) => console.error("Error checking health:", err));
   }, []);
@@ -176,36 +163,6 @@ function App() {
   useEffect(() => {
     localStorage.setItem('droughtAnalysisSources', JSON.stringify(savedSources));
   }, [savedSources]);
-
-  const handleApiKeySubmit = async () => {
-    if (!apiKey.trim()) return;
-    
-    setApiKeyLoading(true);
-    
-    try {
-      const response = await fetch(getApiEndpoint('api-key'), {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ api_key: apiKey }),
-      });
-      
-      if (response.ok) {
-        setApiKeyStatus("set");
-        setApiKey("");
-        message.success('API key set successfully!');
-      } else {
-        const errorData = await response.json();
-        message.error(`Invalid API key: ${errorData.detail || 'Please check your API key'}`);
-        setApiKeyStatus("not_set");
-      }
-    } catch (error) {
-      console.error("Error setting API key:", error);
-      message.error('Failed to set API key. Please try again.');
-      setApiKeyStatus("not_set");
-    } finally {
-      setApiKeyLoading(false);
-    }
-  };
 
   const handleSubmit = async () => {
     if (!urls.trim() || !selectedRegion) return;
@@ -308,43 +265,63 @@ function App() {
       // Start crawling simulation
       simulateCrawling();
       
-      const response = await fetch(getApiEndpoint('crawl-and-summarize'), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          urls: urlList,
-          region: selectedRegion,
-          custom_prompt: ""
-        }),
-        signal: abortController.signal
-      });
+      // Create a timeout controller for long-running requests (15 minutes)
+      const timeoutController = new AbortController();
+      const timeoutId = setTimeout(() => {
+        timeoutController.abort();
+      }, 15 * 60 * 1000); // 15 minutes timeout
       
-      if (response.ok) {
-        const data = await response.json();
+      try {
+        const response = await fetch(getApiEndpoint('crawl-and-summarize'), {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            urls: urlList,
+            region: selectedRegion,
+            follow_links: followLinks,
+            max_depth: maxDepth
+          }),
+          signal: abortController.signal
+        });
         
-        // Check if cancelled before completing
-        if (abortController.signal.aborted) {
-          throw new Error('Analysis cancelled by user');
+        clearTimeout(timeoutId); // Clear timeout if request completes
+        
+        if (response.ok) {
+          const data = await response.json();
+          
+          // Check if cancelled before completing
+          if (abortController.signal.aborted) {
+            throw new Error('Analysis cancelled by user');
+          }
+          
+          // Simulate analysis completion
+          setTimeout(() => {
+            setProgress(prev => ({
+              ...prev,
+              stage: 'complete',
+              currentUrl: 'Analysis complete! Results ready.'
+            }));
+          }, 3000);
+          
+          setResults(prev => [{
+            region: selectedRegion,
+            urls: urlList,
+            summary: data.analysis,
+            status: 'success',
+            urlsAnalyzed: data.urls_analyzed || urlList.length, // Total URLs including sublinks
+            mainUrlsProcessed: data.main_urls_processed || urlList.length, // Main URLs only
+            followedLinks: data.followed_links || false,
+            timestamp: new Date().toISOString()
+          }, ...prev]);
+        } else {
+          throw new Error(`HTTP error! status: ${response.status}`);
         }
-        
-        // Simulate analysis completion
-        setTimeout(() => {
-          setProgress(prev => ({
-            ...prev,
-            stage: 'complete',
-            currentUrl: 'Analysis complete! Results ready.'
-          }));
-        }, 3000);
-        
-        setResults(prev => [{
-          region: selectedRegion,
-          urls: urlList,
-          summary: data.analysis,
-          status: 'success',
-          urlsAnalyzed: data.urls_analyzed || urlList.length, // Use backend's count
-          followedLinks: data.followed_links || false,
-          timestamp: new Date().toISOString()
-        }, ...prev]);
+      } catch (timeoutError) {
+        clearTimeout(timeoutId);
+        if (timeoutError.name === 'AbortError' && timeoutError.message.includes('timeout')) {
+          throw new Error('Request timed out after 15 minutes. The analysis is taking longer than expected.');
+        }
+        throw timeoutError;
       }
     } catch (error) {
       console.error('Error:', error);
@@ -357,6 +334,38 @@ function App() {
         }));
         
         message.info('Analysis cancelled successfully');
+      } else if (error.message.includes('timeout')) {
+        setProgress(prev => ({
+          ...prev,
+          stage: 'error',
+          currentUrl: 'Request timed out - analysis taking too long'
+        }));
+        
+        setResults(prev => [{
+          region: selectedRegion,
+          urls: urlList,
+          summary: 'Analysis timed out after 15 minutes. The comprehensive crawling with link following is taking longer than expected. Try reducing the number of URLs or disabling link following.',
+          status: 'error',
+          timestamp: new Date().toISOString()
+        }, ...prev]);
+        
+        message.error('Analysis timed out. Try reducing URLs or disabling link following.');
+      } else if (error.message.includes('Failed to fetch')) {
+        setProgress(prev => ({
+          ...prev,
+          stage: 'error',
+          currentUrl: 'Network error - cannot connect to backend'
+        }));
+        
+        setResults(prev => [{
+          region: selectedRegion,
+          urls: urlList,
+          summary: 'Network error: Cannot connect to the backend service. Please check your internet connection and try again.',
+          status: 'error',
+          timestamp: new Date().toISOString()
+        }, ...prev]);
+        
+        message.error('Network error. Please check your connection and try again.');
       } else {
         setProgress(prev => ({
           ...prev,
@@ -367,10 +376,12 @@ function App() {
         setResults(prev => [{
           region: selectedRegion,
           urls: urlList,
-          summary: 'Error occurred during analysis',
+          summary: `Error occurred during analysis: ${error.message}`,
           status: 'error',
           timestamp: new Date().toISOString()
         }, ...prev]);
+        
+        message.error('Analysis failed. Please try again.');
       }
     } finally {
       setIsLoading(false);
@@ -701,8 +712,6 @@ function App() {
             onClick={() => setCollapsed(!collapsed)}
             style={{ fontSize: '16px', width: 64, height: 64 }}
           />
-          {/* Tag component displays API connection status - shows "Connected" or "Not Set" based on apiKeyStatus */}
-          <Tag color="blue">API: {apiKeyStatus === 'set' ? 'Connected' : 'Not Set'}</Tag>
         </Header>
         
         <Content style={{ margin: '16px', overflow: 'auto' }}>
@@ -751,20 +760,28 @@ function App() {
                 </Col>
                 {results.length > 0 && (
                   <Col span={24}>
-                    <Card size="small">
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <Text>
-                          Recent Results: {results.slice(-3).map(r => r.region).join(', ')}
-                          {results.length > 3 && ` and ${results.length - 3} more`}
-                        </Text>
-                        <Button 
-                          type="link" 
-                          size="small"
-                          onClick={() => setCurrentView('results')}
+                    <Card
+                      title="System Prompt Editor"
+                      style={{ marginBottom: 24 }}
+                      extra={
+                        <Button
+                          type="primary"
+                          loading={systemPromptLoading}
+                          onClick={handleSystemPromptSave}
+                          disabled={systemPromptLoading}
                         >
-                          View All Results →
+                          Save Prompt
                         </Button>
-                      </div>
+                      }
+                    >
+                      <TextArea
+                        rows={8}
+                        value={systemPrompt}
+                        onChange={e => setSystemPrompt(e.target.value)}
+                        placeholder="Edit the core system prompt here. This will be used for all analyses."
+                        style={{ fontFamily: 'monospace' }}
+                        disabled={systemPromptLoading}
+                      />
                     </Card>
                   </Col>
                 )}
@@ -875,90 +892,21 @@ function App() {
                           >
                             View Results
                           </Button>
+                          <Button 
+                            danger
+                            block
+                            onClick={clearAllResults}
+                            disabled={results.length === 0}
+                            icon={<DeleteOutlined />}
+                          >
+                            Clear All Results
+                          </Button>
                         </Space>
                       </Card>
                     </Col>
                   </Row>
                 </Card>
               </div>
-            )}
-
-            {/* API Key Section */}
-            {apiKeyStatus !== "set" && currentView === 'analysis' && (
-              <Card 
-                title={
-                  <Space>
-                    <KeyOutlined />
-                    <span>OpenAI API Configuration</span>
-                  </Space>
-                }
-                style={{ marginBottom: 16 }}
-                extra={
-                  <Alert 
-                    message="API Key Required" 
-                    description="Please set your OpenAI API key to begin analysis"
-                    type="warning" 
-                    showIcon
-                  />
-                }
-              >
-                <Space.Compact style={{ width: '100%' }}>
-                  <Input.Password
-                    placeholder="Enter your OpenAI API key"
-                    value={apiKey}
-                    onChange={(e) => setApiKey(e.target.value)}
-                    style={{ flex: 1 }}
-                  />
-                  <Button 
-                    type="primary" 
-                    onClick={handleApiKeySubmit}
-                    loading={apiKeyLoading}
-                  >
-                    Set API Key
-                  </Button>
-                </Space.Compact>
-              </Card>
-            )}
-
-            {/* System Prompt Section */}
-            {currentView === 'analysis' && (
-              <Collapse 
-                defaultActiveKey={[]} 
-                style={{ marginBottom: 16 }}
-                items={[
-                  {
-                    key: '1',
-                    label: <span><SettingOutlined /> AI Analysis Configuration</span>,
-                    children: (
-                      <Row gutter={[16, 16]}>
-                        <Col xs={24}>
-                          <div>
-                            <Text strong>System Prompt</Text>
-                            <Text type="secondary" style={{ display: 'block', marginBottom: 8 }}>
-                              Configure how the AI should analyze drought and food security data. This prompt will be used for all analyses.
-                            </Text>
-                            <TextArea
-                              rows={6}
-                              placeholder="Enter the system prompt for AI analysis..."
-                              value={systemPrompt}
-                              onChange={(e) => setSystemPrompt(e.target.value)}
-                              style={{ marginTop: 8 }}
-                            />
-                            <Button 
-                              type="primary" 
-                              onClick={handleSystemPromptSave}
-                              loading={systemPromptLoading}
-                              style={{ marginTop: 8 }}
-                            >
-                              Save System Prompt
-                            </Button>
-                          </div>
-                        </Col>
-                      </Row>
-                    )
-                  }
-                ]}
-              />
             )}
 
             {/* Main Analysis Form */}
@@ -1052,7 +1000,7 @@ function App() {
                         onClick={handleSubmit}
                         loading={isLoading}
                         icon={<SearchOutlined />}
-                        disabled={!urls.trim() || !selectedRegion || apiKeyStatus !== "set"}
+                        disabled={!urls.trim() || !selectedRegion}
                         style={{ flex: 1 }}
                       >
                         {isLoading ? 'Analyzing...' : 'Start Analysis'}
@@ -1074,6 +1022,15 @@ function App() {
                         icon={<DatabaseOutlined />}
                       >
                         Save as Source
+                      </Button>
+                      <Button 
+                        danger
+                        size="large"
+                        onClick={clearAllResults}
+                        disabled={results.length === 0}
+                        icon={<DeleteOutlined />}
+                      >
+                        Clear Results
                       </Button>
                     </Space>
                   </Col>
@@ -1394,14 +1351,6 @@ https://www.ncei.noaa.gov/access/monitoring/monthly-report/global-drought/202503
                       }
                       extra={
                         <Space>
-                          <Tag icon={<LinkOutlined />}>
-                            {result.urlsAnalyzed || result.urls.length} URLs
-                          </Tag>
-                          {result.followedLinks && (
-                            <Tag icon={<LinkOutlined />} color="blue">
-                              Links Followed
-                            </Tag>
-                          )}
                           <Tooltip title={new Date(result.timestamp || Date.now()).toLocaleString()}>
                             <Tag icon={<ClockCircleOutlined />} color="default">
                               {formatRelativeTime(result.timestamp)}
@@ -1413,7 +1362,53 @@ https://www.ncei.noaa.gov/access/monitoring/monthly-report/global-drought/202503
                     >
                       {result.status === 'success' ? (
                         <div>
-                          {formatAnalysisOutput(result.summary)}
+                          {/* URL Statistics Section */}
+                          <div style={{ 
+                            background: '#f5f5f5', 
+                            padding: '8px', 
+                            borderRadius: '4px', 
+                            marginBottom: '12px',
+                            border: '1px solid #d9d9d9'
+                          }}>
+                            <Row gutter={[8, 4]}>
+                              <Col xs={8}>
+                                <div style={{ textAlign: 'center' }}>
+                                  <div style={{ fontSize: '16px', fontWeight: 'bold', color: '#1890ff' }}>
+                                    {result.mainUrlsProcessed || result.urls?.length || 0}
+                                  </div>
+                                  <div style={{ fontSize: '10px', color: '#666' }}>Main URLs</div>
+                                </div>
+                              </Col>
+                              <Col xs={8}>
+                                <div style={{ textAlign: 'center' }}>
+                                  <div style={{ fontSize: '16px', fontWeight: 'bold', color: '#52c41a' }}>
+                                    {Math.max(0, (result.urlsAnalyzed || 0) - (result.mainUrlsProcessed || result.urls?.length || 0))}
+                                  </div>
+                                  <div style={{ fontSize: '10px', color: '#666' }}>Sublinks</div>
+                                </div>
+                              </Col>
+                              <Col xs={8}>
+                                <div style={{ textAlign: 'center' }}>
+                                  <div style={{ fontSize: '16px', fontWeight: 'bold', color: '#722ed1' }}>
+                                    {result.urlsAnalyzed || result.urls?.length || 0}
+                                  </div>
+                                  <div style={{ fontSize: '10px', color: '#666' }}>Total</div>
+                                </div>
+                              </Col>
+                            </Row>
+                            {result.followedLinks && (
+                              <div style={{ textAlign: 'center', marginTop: '4px' }}>
+                                <Tag icon={<LinkOutlined />} color="blue" size="small">
+                                  Links Followed
+                                </Tag>
+                              </div>
+                            )}
+                          </div>
+                          
+                          {/* Analysis Content */}
+                          <div style={{ maxHeight: 200, overflowY: 'auto' }}>
+                            {formatAnalysisOutput(result.summary)}
+                          </div>
                         </div>
                       ) : (
                         <Alert
@@ -1527,7 +1522,10 @@ https://www.ncei.noaa.gov/access/monitoring/monthly-report/global-drought/202503
                             extra={
                               <Space>
                                 <Tag icon={<LinkOutlined />}>
-                                  {result.urlsAnalyzed || result.urls?.length || 0} URLs
+                                  {result.mainUrlsProcessed || result.urls?.length || 0} main URLs
+                                  {result.urlsAnalyzed > (result.mainUrlsProcessed || result.urls?.length || 0) && 
+                                    ` + ${result.urlsAnalyzed - (result.mainUrlsProcessed || result.urls?.length || 0)} sublinks`
+                                  }
                                 </Tag>
                                 <Button 
                                   type="link" 
@@ -1542,12 +1540,50 @@ https://www.ncei.noaa.gov/access/monitoring/monthly-report/global-drought/202503
                           >
                             {result.status === 'success' ? (
                               <div>
-                                <div style={{ marginBottom: 12 }}>
-                                  <Text type="secondary">
-                                    Analyzed {result.urlsAnalyzed || result.urls?.length || 0} URLs
-                                    {result.followedLinks && ' with link following'}
-                                  </Text>
+                                {/* URL Statistics Section */}
+                                <div style={{ 
+                                  background: '#f5f5f5', 
+                                  padding: '8px', 
+                                  borderRadius: '4px', 
+                                  marginBottom: '12px',
+                                  border: '1px solid #d9d9d9'
+                                }}>
+                                  <Row gutter={[8, 4]}>
+                                    <Col xs={8}>
+                                      <div style={{ textAlign: 'center' }}>
+                                        <div style={{ fontSize: '16px', fontWeight: 'bold', color: '#1890ff' }}>
+                                          {result.mainUrlsProcessed || result.urls?.length || 0}
+                                        </div>
+                                        <div style={{ fontSize: '10px', color: '#666' }}>Main URLs</div>
+                                      </div>
+                                    </Col>
+                                    <Col xs={8}>
+                                      <div style={{ textAlign: 'center' }}>
+                                        <div style={{ fontSize: '16px', fontWeight: 'bold', color: '#52c41a' }}>
+                                          {Math.max(0, (result.urlsAnalyzed || 0) - (result.mainUrlsProcessed || result.urls?.length || 0))}
+                                        </div>
+                                        <div style={{ fontSize: '10px', color: '#666' }}>Sublinks</div>
+                                      </div>
+                                    </Col>
+                                    <Col xs={8}>
+                                      <div style={{ textAlign: 'center' }}>
+                                        <div style={{ fontSize: '16px', fontWeight: 'bold', color: '#722ed1' }}>
+                                          {result.urlsAnalyzed || result.urls?.length || 0}
+                                        </div>
+                                        <div style={{ fontSize: '10px', color: '#666' }}>Total</div>
+                                      </div>
+                                    </Col>
+                                  </Row>
+                                  {result.followedLinks && (
+                                    <div style={{ textAlign: 'center', marginTop: '4px' }}>
+                                      <Tag icon={<LinkOutlined />} color="blue" size="small">
+                                        Links Followed
+                                      </Tag>
+                                    </div>
+                                  )}
                                 </div>
+                                
+                                {/* Analysis Content */}
                                 <div style={{ maxHeight: 200, overflowY: 'auto' }}>
                                   {formatAnalysisOutput(result.summary)}
                                 </div>
