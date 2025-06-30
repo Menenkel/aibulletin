@@ -301,7 +301,8 @@ function App() {
           urls: urlList,
           summary: data.analysis,
           status: 'success',
-          urlsAnalyzed: data.urls_analyzed || urlList.length, // Use backend's count
+          urlsAnalyzed: data.urls_analyzed || urlList.length, // Total URLs including sublinks
+          mainUrlsProcessed: data.main_urls_processed || urlList.length, // Main URLs only
           followedLinks: data.followed_links || false,
           timestamp: new Date().toISOString()
         }, ...prev]);
@@ -1297,7 +1298,10 @@ https://www.ncei.noaa.gov/access/monitoring/monthly-report/global-drought/202503
                       extra={
                         <Space>
                           <Tag icon={<LinkOutlined />}>
-                            {result.urlsAnalyzed || result.urls.length} URLs
+                            {result.mainUrlsProcessed || result.urls.length} main URLs
+                            {result.urlsAnalyzed > (result.mainUrlsProcessed || result.urls.length) && 
+                              ` + ${result.urlsAnalyzed - (result.mainUrlsProcessed || result.urls.length)} sublinks`
+                            }
                           </Tag>
                           {result.followedLinks && (
                             <Tag icon={<LinkOutlined />} color="blue">
@@ -1429,7 +1433,10 @@ https://www.ncei.noaa.gov/access/monitoring/monthly-report/global-drought/202503
                             extra={
                               <Space>
                                 <Tag icon={<LinkOutlined />}>
-                                  {result.urlsAnalyzed || result.urls?.length || 0} URLs
+                                  {result.mainUrlsProcessed || result.urls?.length || 0} main URLs
+                                  {result.urlsAnalyzed > (result.mainUrlsProcessed || result.urls?.length || 0) && 
+                                    ` + ${result.urlsAnalyzed - (result.mainUrlsProcessed || result.urls?.length || 0)} sublinks`
+                                  }
                                 </Tag>
                                 <Button 
                                   type="link" 
@@ -1446,7 +1453,8 @@ https://www.ncei.noaa.gov/access/monitoring/monthly-report/global-drought/202503
                               <div>
                                 <div style={{ marginBottom: 12 }}>
                                   <Text type="secondary">
-                                    Analyzed {result.urlsAnalyzed || result.urls?.length || 0} URLs
+                                    Analyzed {result.urlsAnalyzed || result.urls?.length || 0} URLs total
+                                    ({result.mainUrlsProcessed || result.urls?.length || 0} main + {Math.max(0, (result.urlsAnalyzed || 0) - (result.mainUrlsProcessed || result.urls?.length || 0))} sublinks)
                                     {result.followedLinks && ' with link following'}
                                   </Text>
                                 </div>
