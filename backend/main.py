@@ -206,10 +206,13 @@ async def crawl_url(url: str, browser, depth: int = 1, max_depth: int = 2):
             for href in hrefs:
                 try:
                     parsed = urlparse(href)
-                    if parsed.netloc == base_domain and href not in visited_urls:
+                    # TEMP: Relax domain filter for debugging
+                    if href not in visited_urls:
                         sublinks.append(href)
-                except:
+                except Exception as e:
+                    print(f"Error parsing href {href}: {e}")
                     continue
+            print(f"Found {len(sublinks)} sublinks on {url} at depth {depth}")
             
             # Limit number of sublinks to crawl to avoid infinite loops
             sublinks = sublinks[:5]  # Limit to 5 sublinks per page
