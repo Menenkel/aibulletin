@@ -442,7 +442,7 @@ async def crawl_and_summarize(request: CrawlRequest):
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": f"Please analyze all the following content sources and provide a comprehensive regional analysis:\n\n{combined_content[:20000]}"}
             ],
-            max_tokens=2000,
+            max_tokens=4000,
             temperature=0.3
         )
         
