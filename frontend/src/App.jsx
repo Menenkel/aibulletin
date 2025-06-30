@@ -1297,17 +1297,6 @@ https://www.ncei.noaa.gov/access/monitoring/monthly-report/global-drought/202503
                       }
                       extra={
                         <Space>
-                          <Tag icon={<LinkOutlined />}>
-                            {result.mainUrlsProcessed || result.urls.length} main URLs
-                            {result.urlsAnalyzed > (result.mainUrlsProcessed || result.urls.length) && 
-                              ` + ${result.urlsAnalyzed - (result.mainUrlsProcessed || result.urls.length)} sublinks`
-                            }
-                          </Tag>
-                          {result.followedLinks && (
-                            <Tag icon={<LinkOutlined />} color="blue">
-                              Links Followed
-                            </Tag>
-                          )}
                           <Tooltip title={new Date(result.timestamp || Date.now()).toLocaleString()}>
                             <Tag icon={<ClockCircleOutlined />} color="default">
                               {formatRelativeTime(result.timestamp)}
@@ -1319,7 +1308,53 @@ https://www.ncei.noaa.gov/access/monitoring/monthly-report/global-drought/202503
                     >
                       {result.status === 'success' ? (
                         <div>
-                          {formatAnalysisOutput(result.summary)}
+                          {/* URL Statistics Section */}
+                          <div style={{ 
+                            background: '#f5f5f5', 
+                            padding: '8px', 
+                            borderRadius: '4px', 
+                            marginBottom: '12px',
+                            border: '1px solid #d9d9d9'
+                          }}>
+                            <Row gutter={[8, 4]}>
+                              <Col xs={8}>
+                                <div style={{ textAlign: 'center' }}>
+                                  <div style={{ fontSize: '16px', fontWeight: 'bold', color: '#1890ff' }}>
+                                    {result.mainUrlsProcessed || result.urls?.length || 0}
+                                  </div>
+                                  <div style={{ fontSize: '10px', color: '#666' }}>Main URLs</div>
+                                </div>
+                              </Col>
+                              <Col xs={8}>
+                                <div style={{ textAlign: 'center' }}>
+                                  <div style={{ fontSize: '16px', fontWeight: 'bold', color: '#52c41a' }}>
+                                    {Math.max(0, (result.urlsAnalyzed || 0) - (result.mainUrlsProcessed || result.urls?.length || 0))}
+                                  </div>
+                                  <div style={{ fontSize: '10px', color: '#666' }}>Sublinks</div>
+                                </div>
+                              </Col>
+                              <Col xs={8}>
+                                <div style={{ textAlign: 'center' }}>
+                                  <div style={{ fontSize: '16px', fontWeight: 'bold', color: '#722ed1' }}>
+                                    {result.urlsAnalyzed || result.urls?.length || 0}
+                                  </div>
+                                  <div style={{ fontSize: '10px', color: '#666' }}>Total</div>
+                                </div>
+                              </Col>
+                            </Row>
+                            {result.followedLinks && (
+                              <div style={{ textAlign: 'center', marginTop: '4px' }}>
+                                <Tag icon={<LinkOutlined />} color="blue" size="small">
+                                  Links Followed
+                                </Tag>
+                              </div>
+                            )}
+                          </div>
+                          
+                          {/* Analysis Content */}
+                          <div style={{ maxHeight: 200, overflowY: 'auto' }}>
+                            {formatAnalysisOutput(result.summary)}
+                          </div>
                         </div>
                       ) : (
                         <Alert
@@ -1451,13 +1486,50 @@ https://www.ncei.noaa.gov/access/monitoring/monthly-report/global-drought/202503
                           >
                             {result.status === 'success' ? (
                               <div>
-                                <div style={{ marginBottom: 12 }}>
-                                  <Text type="secondary">
-                                    Analyzed {result.urlsAnalyzed || result.urls?.length || 0} URLs total
-                                    ({result.mainUrlsProcessed || result.urls?.length || 0} main + {Math.max(0, (result.urlsAnalyzed || 0) - (result.mainUrlsProcessed || result.urls?.length || 0))} sublinks)
-                                    {result.followedLinks && ' with link following'}
-                                  </Text>
+                                {/* URL Statistics Section */}
+                                <div style={{ 
+                                  background: '#f5f5f5', 
+                                  padding: '8px', 
+                                  borderRadius: '4px', 
+                                  marginBottom: '12px',
+                                  border: '1px solid #d9d9d9'
+                                }}>
+                                  <Row gutter={[8, 4]}>
+                                    <Col xs={8}>
+                                      <div style={{ textAlign: 'center' }}>
+                                        <div style={{ fontSize: '16px', fontWeight: 'bold', color: '#1890ff' }}>
+                                          {result.mainUrlsProcessed || result.urls?.length || 0}
+                                        </div>
+                                        <div style={{ fontSize: '10px', color: '#666' }}>Main URLs</div>
+                                      </div>
+                                    </Col>
+                                    <Col xs={8}>
+                                      <div style={{ textAlign: 'center' }}>
+                                        <div style={{ fontSize: '16px', fontWeight: 'bold', color: '#52c41a' }}>
+                                          {Math.max(0, (result.urlsAnalyzed || 0) - (result.mainUrlsProcessed || result.urls?.length || 0))}
+                                        </div>
+                                        <div style={{ fontSize: '10px', color: '#666' }}>Sublinks</div>
+                                      </div>
+                                    </Col>
+                                    <Col xs={8}>
+                                      <div style={{ textAlign: 'center' }}>
+                                        <div style={{ fontSize: '16px', fontWeight: 'bold', color: '#722ed1' }}>
+                                          {result.urlsAnalyzed || result.urls?.length || 0}
+                                        </div>
+                                        <div style={{ fontSize: '10px', color: '#666' }}>Total</div>
+                                      </div>
+                                    </Col>
+                                  </Row>
+                                  {result.followedLinks && (
+                                    <div style={{ textAlign: 'center', marginTop: '4px' }}>
+                                      <Tag icon={<LinkOutlined />} color="blue" size="small">
+                                        Links Followed
+                                      </Tag>
+                                    </div>
+                                  )}
                                 </div>
+                                
+                                {/* Analysis Content */}
                                 <div style={{ maxHeight: 200, overflowY: 'auto' }}>
                                   {formatAnalysisOutput(result.summary)}
                                 </div>
