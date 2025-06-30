@@ -349,6 +349,7 @@ async def crawl_and_summarize(request: CrawlRequest):
     
     all_content = []
     total_urls_crawled = 0
+    total_urls_visited = 0  # Track all URLs including sublinks
     
     # Process URLs - handle PDFs separately from web pages
     for url in request.urls:
@@ -359,6 +360,7 @@ async def crawl_and_summarize(request: CrawlRequest):
                 pdf_text = extract_text_from_pdf(url)
                 all_content.append(f"Source: {url} (PDF)\n{pdf_text[:8000]}\n\n")
                 total_urls_crawled += 1
+                total_urls_visited += 1
             else:
                 print(f"Processing web page: {url}")
                 try:
@@ -373,9 +375,13 @@ async def crawl_and_summarize(request: CrawlRequest):
                         try:
                             # Use the existing crawl_url function for recursive crawling
                             if request.follow_links:
+                                # Reset visited_urls count for this URL to track sublinks
+                                initial_visited_count = len(visited_urls)
                                 crawled_content = await crawl_url(url, browser, depth=1, max_depth=request.max_depth)
                                 all_content.append(f"Source: {url}\n{crawled_content[:8000]}\n\n")
                                 total_urls_crawled += 1
+                                # Count all URLs visited including sublinks
+                                total_urls_visited += len(visited_urls) - initial_visited_count + 1
                             else:
                                 # Just crawl the main page without following links
                                 page = await browser.new_page()
@@ -404,6 +410,7 @@ async def crawl_and_summarize(request: CrawlRequest):
                                 
                                 all_content.append(f"Source: {url}\n{main_text[:8000]}\n\n")
                                 total_urls_crawled += 1
+                                total_urls_visited += 1
                                 await page.close()
                         finally:
                             await browser.close()
@@ -438,7 +445,8 @@ async def crawl_and_summarize(request: CrawlRequest):
         
         return {
             "analysis": summary,
-            "urls_analyzed": total_urls_crawled,
+            "urls_analyzed": total_urls_visited,  # Return total URLs including sublinks
+            "main_urls_processed": total_urls_crawled,  # Return main URLs processed
             "followed_links": request.follow_links,
             "pdf_support": PDF_SUPPORT
         }
