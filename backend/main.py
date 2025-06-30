@@ -39,12 +39,10 @@ app.add_middleware(
         "http://localhost:3000",
         "https://localhost:5173",
         "https://localhost:5174",
-        # Add your production domains here
-        "https://your-app.netlify.app",
-        "https://your-app.vercel.app",
-        "https://your-app.render.com",
-        # Allow all origins for development (remove in production)
-        "*"
+        # Netlify production and preview domains
+        "https://aibulletin-test-deployment.windsurf.build",
+        # Add your production Netlify domain here if you have one, e.g.:
+        # "https://your-app.netlify.app",
     ],
     allow_credentials=True,
     allow_methods=["*"],
