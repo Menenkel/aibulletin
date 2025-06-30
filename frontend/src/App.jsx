@@ -54,7 +54,6 @@ const { Step } = Steps;
 
 // API configuration
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
-const DEFAULT_API_KEY = import.meta.env.VITE_OPENAI_API_KEY || "";
 
 const getApiEndpoint = (endpoint) => {
   // Always use the API_BASE_URL if set, otherwise fallback to Netlify Functions (for legacy/dev)
@@ -67,10 +66,6 @@ const getApiEndpoint = (endpoint) => {
 
 // Updated with dark mode toggle and background animation
 function App() {
-  const [apiKey, setApiKey] = useState(DEFAULT_API_KEY);
-  const [apiKeyStatus, setApiKeyStatus] = useState(DEFAULT_API_KEY ? "set" : "not_set");
-  const [apiKeyConfigured, setApiKeyConfigured] = useState(false);
-  const [apiKeyLoading, setApiKeyLoading] = useState(false);
   const [selectedRegion, setSelectedRegion] = useState("");
   const [urls, setUrls] = useState("");
   const [systemPrompt, setSystemPrompt] = useState("");
@@ -130,14 +125,6 @@ function App() {
       })
       .catch((err) => console.error("Error loading regions:", err));
 
-    // Check API key status only if not set by env
-    if (!DEFAULT_API_KEY) {
-      fetch(getApiEndpoint('api-key/status'))
-        .then((res) => res.json())
-        .then((data) => setApiKeyStatus(data.has_api_key ? "set" : "not_set"))
-        .catch((err) => console.error("Error checking API key status:", err));
-    }
-
     // Load saved URLs
     fetch(getApiEndpoint('saved-urls'))
       .then((res) => res.json())
@@ -163,7 +150,6 @@ function App() {
       .then((res) => res.json())
       .then((data) => {
         setPdfSupport(data.pdf_support);
-        setApiKeyConfigured(data.api_key_configured);
       })
       .catch((err) => console.error("Error checking health:", err));
   }, []);
@@ -177,36 +163,6 @@ function App() {
   useEffect(() => {
     localStorage.setItem('droughtAnalysisSources', JSON.stringify(savedSources));
   }, [savedSources]);
-
-  const handleApiKeySubmit = async () => {
-    if (!apiKey.trim()) return;
-    
-    setApiKeyLoading(true);
-    
-    try {
-      const response = await fetch(getApiEndpoint('api-key'), {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ api_key: apiKey }),
-      });
-      
-      if (response.ok) {
-        setApiKeyStatus("set");
-        setApiKey("");
-        message.success('API key set successfully!');
-      } else {
-        const errorData = await response.json();
-        message.error(`Invalid API key: ${errorData.detail || 'Please check your API key'}`);
-        setApiKeyStatus("not_set");
-      }
-    } catch (error) {
-      console.error("Error setting API key:", error);
-      message.error('Failed to set API key. Please try again.');
-      setApiKeyStatus("not_set");
-    } finally {
-      setApiKeyLoading(false);
-    }
-  };
 
   const handleSubmit = async () => {
     if (!urls.trim() || !selectedRegion) return;
@@ -704,8 +660,6 @@ function App() {
             onClick={() => setCollapsed(!collapsed)}
             style={{ fontSize: '16px', width: 64, height: 64 }}
           />
-          {/* Tag component displays API connection status - shows "Connected" or "Not Set" based on apiKeyStatus */}
-          <Tag color="blue">API: {apiKeyStatus === 'set' ? 'Connected' : 'Not Set'}</Tag>
         </Header>
         
         <Content style={{ margin: '16px', overflow: 'auto' }}>
@@ -886,84 +840,6 @@ function App() {
               </div>
             )}
 
-            {/* API Key Section */}
-            {apiKeyStatus !== "set" && currentView === 'analysis' && !DEFAULT_API_KEY && (
-              <Card 
-                title={
-                  <Space>
-                    <KeyOutlined />
-                    <span>OpenAI API Configuration</span>
-                  </Space>
-                }
-                style={{ marginBottom: 16 }}
-                extra={
-                  <Alert 
-                    message="API Key Required" 
-                    description="Please set your OpenAI API key to begin analysis"
-                    type="warning" 
-                    showIcon
-                  />
-                }
-              >
-                <Space.Compact style={{ width: '100%' }}>
-                  <Input.Password
-                    placeholder="Enter your OpenAI API key"
-                    value={apiKey}
-                    onChange={(e) => setApiKey(e.target.value)}
-                    style={{ flex: 1 }}
-                  />
-                  <Button 
-                    type="primary" 
-                    onClick={handleApiKeySubmit}
-                    loading={apiKeyLoading}
-                  >
-                    Set API Key
-                  </Button>
-                </Space.Compact>
-              </Card>
-            )}
-
-            {/* System Prompt Section */}
-            {currentView === 'analysis' && (
-              <Collapse 
-                defaultActiveKey={[]} 
-                style={{ marginBottom: 16 }}
-                items={[
-                  {
-                    key: '1',
-                    label: <span><SettingOutlined /> AI Analysis Configuration</span>,
-                    children: (
-                      <Row gutter={[16, 16]}>
-                        <Col xs={24}>
-                          <div>
-                            <Text strong>System Prompt</Text>
-                            <Text type="secondary" style={{ display: 'block', marginBottom: 8 }}>
-                              Configure how the AI should analyze drought and food security data. This prompt will be used for all analyses.
-                            </Text>
-                            <TextArea
-                              rows={6}
-                              placeholder="Enter the system prompt for AI analysis..."
-                              value={systemPrompt}
-                              onChange={(e) => setSystemPrompt(e.target.value)}
-                              style={{ marginTop: 8 }}
-                            />
-                            <Button 
-                              type="primary" 
-                              onClick={handleSystemPromptSave}
-                              loading={systemPromptLoading}
-                              style={{ marginTop: 8 }}
-                            >
-                              Save System Prompt
-                            </Button>
-                          </div>
-                        </Col>
-                      </Row>
-                    )
-                  }
-                ]}
-              />
-            )}
-
             {/* Main Analysis Form */}
             {currentView === 'analysis' && (
               <Card 
@@ -1055,7 +931,7 @@ function App() {
                         onClick={handleSubmit}
                         loading={isLoading}
                         icon={<SearchOutlined />}
-                        disabled={!urls.trim() || !selectedRegion || apiKeyStatus !== "set"}
+                        disabled={!urls.trim() || !selectedRegion}
                         style={{ flex: 1 }}
                       >
                         {isLoading ? 'Analyzing...' : 'Start Analysis'}
