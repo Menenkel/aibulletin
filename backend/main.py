@@ -369,6 +369,7 @@ async def crawl_and_summarize(request: CrawlRequest):
                 all_content.append(f"Source: {url} (PDF)\n{pdf_text[:4000]}\n\n")
                 total_urls_crawled += 1
             else:
+                print(f"Processing web page: {url}")
                 # Handle web pages with Playwright
                 async with async_playwright() as p:
                     browser = await p.chromium.launch(headless=True)
