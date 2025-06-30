@@ -892,6 +892,15 @@ function App() {
                           >
                             View Results
                           </Button>
+                          <Button 
+                            danger
+                            block
+                            onClick={clearAllResults}
+                            disabled={results.length === 0}
+                            icon={<DeleteOutlined />}
+                          >
+                            Clear All Results
+                          </Button>
                         </Space>
                       </Card>
                     </Col>
@@ -1013,6 +1022,15 @@ function App() {
                         icon={<DatabaseOutlined />}
                       >
                         Save as Source
+                      </Button>
+                      <Button 
+                        danger
+                        size="large"
+                        onClick={clearAllResults}
+                        disabled={results.length === 0}
+                        icon={<DeleteOutlined />}
+                      >
+                        Clear Results
                       </Button>
                     </Space>
                   </Col>
